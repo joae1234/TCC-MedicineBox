@@ -7,23 +7,32 @@ class MedicationListPage extends StatefulWidget {
 }
 
 class _MedicationListPageState extends State<MedicationListPage> {
-  List<Map<String, dynamic>> medications = [];
+  List<Map<String, dynamic>> _medications = [];
 
-  void addOrEditMedication(Map<String, dynamic>? medication, int? index) {
-    if (index != null) {
+  void _addOrEditMedication(Map<String, dynamic>? medication) async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => MedicationFormPage(medication: medication),
+      ),
+    );
+
+    if (result != null) {
       setState(() {
-        medications[index] = medication!;
-      });
-    } else {
-      setState(() {
-        medications.add(medication!);
+        if (medication != null) {
+          // Editar medicamento existente
+          final index = _medications.indexOf(medication);
+          _medications[index] = result;
+        } else {
+          // Adicionar novo medicamento
+          _medications.add(result);
+        }
       });
     }
   }
 
-  void deleteMedication(int index) {
+  void _deleteMedication(Map<String, dynamic> medication) {
     setState(() {
-      medications.removeAt(index);
+      _medications.remove(medication);
     });
   }
 
@@ -31,56 +40,29 @@ class _MedicationListPageState extends State<MedicationListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Medication List'),
+        title: Text('Lista de Medicamentos'),
       ),
-      body: medications.isEmpty
-          ? Center(child: Text('No medications added.'))
-          : ListView.builder(
-        itemCount: medications.length,
+      body: ListView.builder(
+        itemCount: _medications.length,
         itemBuilder: (context, index) {
-          final medication = medications[index];
+          final medication = _medications[index];
           return ListTile(
             title: Text(medication['name']),
             subtitle: Text(
-                '${medication['days']}, ${medication['time'].format(context)}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  icon: Icon(Icons.edit, color: Colors.blue),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => MedicationFormPage(
-                          medication: medication,
-                          index: index,
-                          onSave: addOrEditMedication,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete, color: Colors.red),
-                  onPressed: () => deleteMedication(index),
-                ),
-              ],
+              medication['type'] == 'pill'
+                  ? 'Comprimidos: ${medication['quantity']}'
+                  : 'Dosagem: ${medication['dosage']} ml',
+            ),
+            onTap: () => _addOrEditMedication(medication),
+            trailing: IconButton(
+              icon: Icon(Icons.delete),
+              onPressed: () => _deleteMedication(medication),
             ),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MedicationFormPage(
-                onSave: addOrEditMedication,
-              ),
-            ),
-          );
-        },
+        onPressed: () => _addOrEditMedication(null),
         child: Icon(Icons.add),
       ),
     );
