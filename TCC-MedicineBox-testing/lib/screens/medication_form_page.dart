@@ -22,7 +22,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   late List<String> _selectedDaysOfWeek; // Lista de dias selecionados
   DateTime? _startDate; // Data de início
   DateTime? _endDate; // Data de fim
-  TimeOfDay? _selectedTime; // Horário selecionado
+  late List<TimeOfDay> _selectedTimes; // Lista de horários
 
   @override
   void initState() {
@@ -40,12 +40,17 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
     _selectedDaysOfWeek = widget.medication?['daysOfWeek']?.split(', ') ?? [];
     _startDate = widget.medication?['startDate'];
     _endDate = widget.medication?['endDate'];
-    _selectedTime = widget.medication?['time'] != null
-        ? TimeOfDay(
-            hour: int.parse(widget.medication!['time'].split(':')[0]),
-            minute: int.parse(widget.medication!['time'].split(':')[1]),
-          )
-        : null;
+    _selectedTimes = widget.medication?['times'] != null
+        ? (widget.medication!['times'] as List<dynamic>)
+            .map((time) {
+              final parts = time.split(':');
+              return TimeOfDay(
+                hour: int.parse(parts[0]),
+                minute: int.parse(parts[1]),
+              );
+            })
+            .toList()
+        : [];
   }
 
   @override
@@ -231,29 +236,41 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Seleção de horário
-                TextFormField(
-                  readOnly: true,
-                  decoration: InputDecoration(
-                    labelText: 'Horário',
-                    border: OutlineInputBorder(),
-                  ),
-                  controller: TextEditingController(
-                    text: _selectedTime != null
-                        ? _selectedTime!.format(context)
-                        : '',
-                  ),
-                  onTap: () async {
+                // Seleção de horários
+                Text('Horários', style: TextStyle(fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                Column(
+                  children: _selectedTimes
+                      .map((time) => ListTile(
+                            title: Text(time.format(context)),
+                            trailing: IconButton(
+                              icon: Icon(Icons.delete, color: Colors.red),
+                              onPressed: () {
+                                setState(() {
+                                  _selectedTimes.remove(time);
+                                });
+                              },
+                            ),
+                          ))
+                      .toList(),
+                ),
+                TextButton.icon(
+                  onPressed: () async {
                     final time = await showTimePicker(
                       context: context,
-                      initialTime: _selectedTime ?? TimeOfDay.now(),
+                      initialTime: TimeOfDay.now(),
                     );
                     if (time != null) {
                       setState(() {
-                        _selectedTime = time;
+                        _selectedTimes.add(time);
                       });
                     }
                   },
+                  icon: Icon(Icons.add, color: Colors.purple),
+                  label: Text(
+                    'Adicionar Horário',
+                    style: TextStyle(color: Colors.purple),
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -271,9 +288,9 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                           'daysOfWeek': _selectedDaysOfWeek.join(', '),
                           'startDate': _startDate,
                           'endDate': _endDate,
-                          'time': _selectedTime != null
-                              ? '${_selectedTime!.hour}:${_selectedTime!.minute}'
-                              : null,
+                          'times': _selectedTimes
+                              .map((time) => '${time.hour}:${time.minute}')
+                              .toList(),
                         };
                         Navigator.of(context).pop(medicationData);
                       }

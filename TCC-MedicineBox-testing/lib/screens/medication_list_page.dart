@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'medication_form_page.dart';
+import 'package:intl/intl.dart'; // Para formatação de datas e horários
 
 class MedicationListPage extends StatefulWidget {
   @override
@@ -41,29 +42,70 @@ class _MedicationListPageState extends State<MedicationListPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Lista de Medicamentos'),
+        backgroundColor: Colors.purple,
       ),
-      body: ListView.builder(
+      body: _medications.isEmpty
+          ? Center(
+              child: Text(
+                'Nenhum medicamento adicionado.',
+                style: TextStyle(color: Colors.grey, fontSize: 16),
+              ),
+            )
+      : ListView.builder(
         itemCount: _medications.length,
         itemBuilder: (context, index) {
           final medication = _medications[index];
-          return ListTile(
-            title: Text(medication['name']),
-            subtitle: Text(
-              medication['type'] == 'pill'
-                  ? 'Comprimidos: ${medication['quantity']}'
-                  : 'Dosagem: ${medication['dosage']} ml',
+          return Card(
+                  margin: const EdgeInsets.all(8.0),
+                  elevation: 4,
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.all(16.0),
+                    title: Text(
+                      medication['name'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          medication['type'] == 'pill'
+                              ? 'Comprimidos: ${medication['quantity']}'
+                              : 'Dosagem: ${medication['dosage']} ml',
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Dias: ${medication['daysOfWeek']}'),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Horários: ${medication['times'].map((t) {
+                            final parts = t.split(':');
+                            final formattedHour = parts[0].padLeft(2, '0');
+                            final formattedMinute = parts[1].padLeft(2, '0');
+                            return '$formattedHour:$formattedMinute';
+                          }).join(', ')}',
+                        ),
+                        if (medication['startDate'] != null &&
+                            medication['endDate'] != null)
+                          Text(
+                            'Período: ${DateFormat('dd/MM/yyyy').format(medication['startDate'])} - ${DateFormat('dd/MM/yyyy').format(medication['endDate'])}',
+                          ),
+                      ],
+                    ),
+                    onTap: () => _addOrEditMedication(medication),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red),
+                      onPressed: () => _deleteMedication(medication),
+                    ),
+                  ),
+                );
+              },
             ),
-            onTap: () => _addOrEditMedication(medication),
-            trailing: IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: () => _deleteMedication(medication),
-            ),
-          );
-        },
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addOrEditMedication(null),
-        child: Icon(Icons.add),
+        backgroundColor: Colors.purple,
+        child: const Icon(Icons.add),
       ),
     );
   }
