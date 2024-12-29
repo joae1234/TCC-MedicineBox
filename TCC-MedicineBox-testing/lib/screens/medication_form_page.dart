@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import para formatação de datas
 import 'package:intl/date_symbol_data_local.dart'; // Import para inicializar dados de localização
+import '../utils/csv_utils.dart'; // Import para utilitário de CSV
 
 class MedicationFormPage extends StatefulWidget {
   final Map<String, dynamic>? medication;
@@ -16,6 +17,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
 
   // Variáveis para armazenar os dados do formulário
   late String _name;
+  late List<String> _medicationNames; // Lista para sugestões de nomes
   late String _type;
   int? _quantity;
   double? _dosage;
@@ -27,14 +29,9 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   @override
   void initState() {
     super.initState();
-    // Inicializa os dados de localidade para formatação de datas
-    initializeDateFormatting('pt_BR', null).then((_) {
-      setState(() {}); // Recarrega a interface após inicialização
-    });
-
-    // Inicializa as variáveis com dados ou valores padrão
+   // Inicializa os valores padrão
     _name = widget.medication?['name'] ?? '';
-    _type = widget.medication?['type'] ?? 'pill'; // Valor padrão: comprimido
+    _type = widget.medication?['type'] ?? 'pill';
     _quantity = widget.medication?['quantity'];
     _dosage = widget.medication?['dosage'];
     _selectedDaysOfWeek = widget.medication?['daysOfWeek']?.split(', ') ?? [];
@@ -51,6 +48,17 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
             })
             .toList()
         : [];
+
+    // Carrega os nomes do CSV
+    _medicationNames = [];
+    loadMedicationNames('assets/medications.csv').then((names) {
+      setState(() {
+        _medicationNames = names;
+      });
+    });
+
+    // Inicializa os dados de localização para datas
+    initializeDateFormatting('pt_BR', null);
   }
 
   @override
@@ -60,10 +68,10 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
         title: Text(
           widget.medication == null ? 'Adicionar Medicamento' : 'Editar Medicamento',
         ),
-        backgroundColor: Colors.purple,
+        backgroundColor: Colors.red,
       ),
       body: Container(
-        color: Colors.purple.shade50,
+        color: Colors.white,
         padding: const EdgeInsets.all(20.0),
         child: Form(
           key: _formKey,
@@ -71,20 +79,50 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Campo para o nome do medicamento
-                TextFormField(
-                  initialValue: _name,
-                  decoration: InputDecoration(
-                    labelText: 'Nome do Medicamento',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Informe o nome do medicamento';
+                // Campo com autocomplete para o nome
+                Autocomplete<String>(
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text.isEmpty) {
+                      return const Iterable<String>.empty();
                     }
-                    return null;
+                    return _medicationNames.where((name) =>
+                        name.toLowerCase().contains(
+                            textEditingValue.text.toLowerCase()));
                   },
-                  onSaved: (value) => _name = value!,
+                  onSelected: (String selection) {
+                    setState(() {
+                      _name = selection;
+                    });
+                    // Remove o foco para fechar as sugestões
+                    FocusScope.of(context).unfocus();
+                  },
+                  fieldViewBuilder: (BuildContext context,
+                      TextEditingController textController,
+                      FocusNode focusNode,
+                      VoidCallback onFieldSubmitted) {
+                        textController.text = _name;
+                        return TextFormField(
+                          controller: textController,
+                          focusNode: focusNode,
+                          decoration: InputDecoration(
+                            labelText: 'Nome do Medicamento',
+                            border: OutlineInputBorder(),
+                          ),
+                        onChanged: (value) {
+                          // Reabrir as sugestões se o usuário começar a digitar ou apagar
+                          if (!focusNode.hasFocus) {
+                            focusNode.requestFocus();
+                          }
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Informe o nome do medicamento';
+                          }
+                          return null;
+                        },
+                      onSaved: (value) => _name = value!,
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 
@@ -266,10 +304,10 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                       });
                     }
                   },
-                  icon: Icon(Icons.add, color: Colors.purple),
+                  icon: Icon(Icons.add, color: Colors.red),
                   label: Text(
                     'Adicionar Horário',
-                    style: TextStyle(color: Colors.purple),
+                    style: TextStyle(color: Colors.red),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -296,7 +334,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purple,
+                      backgroundColor: Colors.red,
                       padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
                     ),
                     child: Text('Salvar'),

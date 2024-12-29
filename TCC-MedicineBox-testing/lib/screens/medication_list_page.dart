@@ -42,13 +42,13 @@ class _MedicationListPageState extends State<MedicationListPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Lista de Medicamentos'),
-        backgroundColor: Colors.purple,
+        backgroundColor: Colors.red,
       ),
       body: _medications.isEmpty
           ? Center(
               child: Text(
                 'Nenhum medicamento adicionado.',
-                style: TextStyle(color: Colors.grey, fontSize: 16),
+                style: TextStyle(color: Colors.red, fontSize: 16),
               ),
             )
       : ListView.builder(
@@ -104,7 +104,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _addOrEditMedication(null),
-        backgroundColor: Colors.purple,
+        backgroundColor: Colors.red,
         child: const Icon(Icons.add),
       ),
     );
