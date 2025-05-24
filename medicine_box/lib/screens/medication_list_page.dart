@@ -35,16 +35,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
     });
   }
 
-  void _checkMedicationTimes() {
-    final now = TimeOfDay.now();
-    for (var med in medications) {
-      final medTime = med['time'] as TimeOfDay;
-      if (medTime.hour == now.hour && medTime.minute == now.minute) {
-        _triggerLED();
-        break;
-      }
-    }
-  }
+
 
   void _triggerLED() {
     if (conectado) {
@@ -130,11 +121,24 @@ class _MedicationListPageState extends State<MedicationListPage> {
     });
   }
 
+void _checkMedicationTimes() {
+    final now = TimeOfDay.now();
+    for (var med in medications) {
+      final medTimes = med['times'] as List<TimeOfDay>; // Agora verifica lista de horários
+      for (var medTime in medTimes) {
+        if (medTime.hour == now.hour && medTime.minute == now.minute) {
+          _triggerLED();
+          break;
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Medication List'),
+        title: Text('Lista de Medicamentos'),
         actions: [
           IconButton(
             icon: Icon(conectado ? Icons.wifi : Icons.wifi_off,
@@ -150,15 +154,20 @@ class _MedicationListPageState extends State<MedicationListPage> {
         ],
       ),
       body: medications.isEmpty
-          ? Center(child: Text('No medications added.'))
+          ? Center(child: Text('Nenhum medicamento adicionado.'))
           : ListView.builder(
               itemCount: medications.length,
               itemBuilder: (context, index) {
                 final medication = medications[index];
                 return ListTile(
                   title: Text(medication['name']),
-                  subtitle: Text(
-                      '${medication['days'].join(', ')}, ${medication['time'].format(context)}'),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Dias: ${medication['days'].join(', ')}'),
+                      Text('Horários: ${medication['times'].map((t) => t.format(context)).join(', ')}'),
+                    ],
+                  ),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

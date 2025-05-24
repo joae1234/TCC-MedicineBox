@@ -15,15 +15,15 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   final _formKey = GlobalKey<FormState>();
   TextEditingController _nameController = TextEditingController();
   List<String> _selectedDays = [];
-  TimeOfDay? _selectedTime;
+  List<TimeOfDay> _selectedTimes = []; // Alterado para lista de horários
   final List<String> _daysOfWeek = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday'
+    'Segunda',
+    'Terça',
+    'Quarta',
+    'Quinta',
+    'Sexta',
+    'Sábado',
+    'Domingo'
   ];
 
   @override
@@ -32,20 +32,34 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
     if (widget.medication != null) {
       _nameController.text = widget.medication!['name'];
       _selectedDays = List.from(widget.medication!['days']);
-      _selectedTime = widget.medication!['time'];
+      _selectedTimes = List.from(widget.medication!['times']); // Carrega múltiplos horários
+    } else {
+      _selectedTimes.add(TimeOfDay.now()); // Horário padrão inicial
     }
   }
 
-  void _selectTime() async {
+  void _selectTime(int index) async {
     final TimeOfDay? pickedTime = await showTimePicker(
       context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
+      initialTime: _selectedTimes[index] ?? TimeOfDay.now(),
     );
     if (pickedTime != null) {
       setState(() {
-        _selectedTime = pickedTime;
+        _selectedTimes[index] = pickedTime;
       });
     }
+  }
+
+  void _addNewTime() {
+    setState(() {
+      _selectedTimes.add(TimeOfDay.now());
+    });
+  }
+
+  void _removeTime(int index) {
+    setState(() {
+      _selectedTimes.removeAt(index);
+    });
   }
 
   void _toggleDay(String day) {
@@ -62,7 +76,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.index == null ? 'Add Medication' : 'Edit Medication'),
+        title: Text(widget.index == null ? 'Adicionar Medicamento' : 'Editar Medicamento'),
       ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
@@ -72,16 +86,16 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
             children: [
               TextFormField(
                 controller: _nameController,
-                decoration: InputDecoration(labelText: 'Medication Name'),
+                decoration: InputDecoration(labelText: 'Nome do Medicamento'),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter a name';
+                    return 'Por favor, insira um nome';
                   }
                   return null;
                 },
               ),
               SizedBox(height: 16),
-              Text('Select Days:', style: TextStyle(fontSize: 16)),
+              Text('Selecione os dias:', style: TextStyle(fontSize: 16)),
               SizedBox(height: 8),
               Wrap(
                 spacing: 8.0,
@@ -94,31 +108,50 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                 }).toList(),
               ),
               SizedBox(height: 16),
-              ListTile(
-                title: Text(_selectedTime == null
-                    ? 'Select Time'
-                    : 'Selected Time: ${_selectedTime!.format(context)}'),
-                trailing: Icon(Icons.access_time),
-                onTap: _selectTime,
+              Text('Horários:', style: TextStyle(fontSize: 16)),
+              ..._selectedTimes.asMap().entries.map((entry) {
+                int index = entry.key;
+                TimeOfDay time = entry.value;
+                return ListTile(
+                  title: Text('Horário ${index + 1}: ${time.format(context)}'),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.access_time),
+                        onPressed: () => _selectTime(index),
+                      ),
+                      if (_selectedTimes.length > 1)
+                        IconButton(
+                          icon: Icon(Icons.delete, color: Colors.red),
+                          onPressed: () => _removeTime(index),
+                        ),
+                    ],
+                  ),
+                );
+              }).toList(),
+              TextButton(
+                onPressed: _addNewTime,
+                child: Text('Adicionar horário'),
               ),
               SizedBox(height: 32),
               ElevatedButton(
                 onPressed: () {
                   if (_formKey.currentState!.validate() &&
-                      _selectedTime != null &&
+                      _selectedTimes.isNotEmpty &&
                       _selectedDays.isNotEmpty) {
                     widget.onSave(
                       {
                         'name': _nameController.text,
                         'days': _selectedDays,
-                        'time': _selectedTime,
+                        'times': _selectedTimes, // Agora envia lista de horários
                       },
                       widget.index,
                     );
                     Navigator.pop(context);
                   }
                 },
-                child: Text('Save'),
+                child: Text('Salvar'),
               ),
             ],
           ),
