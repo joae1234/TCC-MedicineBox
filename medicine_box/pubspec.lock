@@ -91,6 +91,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  intl:
+    dependency: "direct main"
+    description:
+      name: intl
+      sha256: "910f85bce16fb5c6f614e117efa303e85a1731bb0081edf3604a2ae6e9a3cc91"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.17.0"
   leak_tracker:
     dependency: transitive
     description:
@@ -151,10 +159,18 @@ packages:
     dependency: "direct main"
     description:
       name: mqtt_client
-      sha256: "85fa7e9aad03fbd6a54fcaf46127579f3e049b4834557a06e49aea7869b04c94"
+      sha256: ba10ec490ded55dc4e77bbc992529d823fb15d0d5ec68c2895f960312060c541
       url: "https://pub.dev"
     source: hosted
-    version: "10.8.0"
+    version: "9.8.1"
+  nested:
+    dependency: transitive
+    description:
+      name: nested
+      sha256: "03bac4c528c64c95c722ec99280375a6f2fc708eec17c7b3f07253b626cd2a20"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   path:
     dependency: transitive
     description:
@@ -163,6 +179,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
+  provider:
+    dependency: "direct main"
+    description:
+      name: provider
+      sha256: "4abbd070a04e9ddc287673bf5a030c7ca8b685ff70218720abab8b092f53dd84"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.1.5"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -240,14 +264,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "14.3.1"
-  web:
-    dependency: transitive
-    description:
-      name: web
-      sha256: "868d88a33d8a87b18ffc05f9f030ba328ffefba92d6c127917a2ba740f9cfe4a"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.1.1"
 sdks:
   dart: ">=3.7.2 <4.0.0"
   flutter: ">=3.18.0-18.0.pre.54"
