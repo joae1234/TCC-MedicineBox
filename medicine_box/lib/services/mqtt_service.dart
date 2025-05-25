@@ -47,6 +47,13 @@ class MqttService {
     );
   }
 
+    void publishCommand(String cmd, String topic) {
+    final builder = MqttClientPayloadBuilder()..addString(cmd);
+    if (isConnected) {
+      client.publishMessage(topic, MqttQos.atMostOnce, builder.payload!);
+    }
+  }
+
   void disconnect() {
     client.disconnect();
   }
