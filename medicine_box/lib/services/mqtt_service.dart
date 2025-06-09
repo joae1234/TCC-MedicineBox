@@ -4,57 +4,76 @@ import 'package:mqtt_client/mqtt_browser_client.dart';
 class MqttService {
   late MqttBrowserClient client;
   bool isConnected = false;
+  final String brokerUrl = 'wss://mqtt.eclipseprojects.io/mqtt';
+  final int brokerPort = 443;
+  final String topicStatus = 'remedio/estado';
+  final String topicCommand = 'comando/led';
 
   Future<void> connect() async {
     client = MqttBrowserClient(
-      'wss://mqtt.eclipseprojects.io/mqtt',
-      'client_${DateTime.now().millisecondsSinceEpoch}',
-    );
-    
-    client.port = 443;
-    client.keepAlivePeriod = 30;
-    client.onConnected = _onConnected;
-    client.onDisconnected = _onDisconnected;
+      brokerUrl,
+      'flutter_${DateTime.now().millisecondsSinceEpoch}',
+    )
+      ..port = brokerPort
+      ..keepAlivePeriod = 30
+      ..onConnected = _onConnected
+      ..onDisconnected = _onDisconnected
+      ..logging(on: false);
 
+    client.onSubscribed = (topic) => print('✅ Inscrito em $topic');
+
+    print('🔄 Tentando conectar ao MQTT...');
     try {
       await client.connect();
     } catch (e) {
-      print('Erro na conexão: $e');
+      print('❌ Erro ao conectar: $e');
       isConnected = false;
     }
   }
 
   void _onConnected() {
-    print('Conectado ao broker MQTT');
+    print('✅ Conectado ao broker MQTT');
     isConnected = true;
+    // só agora inscrevo no tópico de status
+    client.subscribe(topicStatus, MqttQos.atLeastOnce);
   }
 
   void _onDisconnected() {
-    print('Desconectado do broker');
+    print('⚠️ Desconectado do broker');
     isConnected = false;
+    _tryReconnect();
   }
 
-  void sendCommand(String command) {
-    if (!isConnected) return;
-    
-    final builder = MqttClientPayloadBuilder();
-    builder.addString(command);
-    
-    client.publishMessage(
-      'medication/reminder',
-      MqttQos.atLeastOnce,
-      builder.payload!,
-    );
-  }
-
-    void publishCommand(String cmd, String topic) {
-    final builder = MqttClientPayloadBuilder()..addString(cmd);
-    if (isConnected) {
-      client.publishMessage(topic, MqttQos.atMostOnce, builder.payload!);
+  Future<void> _tryReconnect() async {
+    const retryDelay = Duration(seconds: 5);
+    while (!isConnected) {
+      print('🔁 Tentando reconectar...');
+      await Future.delayed(retryDelay);
+      try {
+        await connect();
+      } catch (_) {
+        print('⚠️ Reconexão falhou. Tentando novamente...');
+      }
     }
   }
 
+  void publishCommand(String cmd, String topic) {
+    if (!isConnected) {
+      print('❌ Não conectado. Comando não enviado.');
+      return;
+    }
+
+    final builder = MqttClientPayloadBuilder()..addString(cmd);
+    client.publishMessage(topic, MqttQos.atLeastOnce, builder.payload!);
+    print('📤 Publicado: "$cmd" em "$topic"');
+  }
+
+  void sendCommand(String command) => publishCommand(command, topicCommand);
+
   void disconnect() {
-    client.disconnect();
+    if (isConnected) {
+      client.disconnect();
+      print('🔌 Desconectado manualmente');
+    }
   }
 }

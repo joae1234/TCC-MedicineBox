@@ -11,10 +11,10 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
-  final _emailCtrl    = TextEditingController();
-  final _passCtrl     = TextEditingController();
-  final _confirmCtrl  = TextEditingController();
-  final _nameCtrl     = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  final _confirmCtrl = TextEditingController();
+  final _nameCtrl = TextEditingController();
   bool _loading = false;
 
   @override
@@ -33,13 +33,15 @@ class _SignUpPageState extends State<SignUpPage> {
     final fullName = _nameCtrl.text.trim();
 
     if (email.isEmpty || pass.isEmpty || fullName.isEmpty) {
-      ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Preencha todos os campos')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha todos os campos')),
+      );
       return;
     }
     if (pass != confirm) {
-      ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Senhas não conferem')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Senhas não conferem')),
+      );
       return;
     }
 
@@ -47,19 +49,19 @@ class _SignUpPageState extends State<SignUpPage> {
     try {
       await AuthService().signUp(email, pass);
       final user = AuthService().currentUser!;
-      // grava o perfil como 'patient'
       await ProfileService().upsertProfile(
         Profile(id: user.id, email: user.email!, fullName: fullName, role: 'patient'),
       );
-      // navega para lista de meds
+
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const MedicationListPage()),
         (_) => false,
       );
     } catch (e) {
-      ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text('Erro ao cadastrar: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao cadastrar: $e')),
+      );
     } finally {
       setState(() => _loading = false);
     }
@@ -69,29 +71,69 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext ctx) {
     return Scaffold(
       appBar: AppBar(title: const Text('Cadastre-se')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Nome completo')),
-            TextField(controller: _emailCtrl,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress),
-            TextField(controller: _passCtrl,
-              decoration: const InputDecoration(labelText: 'Senha'),
-              obscureText: true),
-            TextField(controller: _confirmCtrl,
-              decoration: const InputDecoration(labelText: 'Confirme a senha'),
-              obscureText: true),
-            const SizedBox(height: 24),
-            _loading
-              ? const CircularProgressIndicator()
-              : ElevatedButton(
-                  onPressed: _doSignUp,
-                  child: const Text('Cadastrar'),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                const Icon(Icons.person_add_alt, size: 80),
+                const SizedBox(height: 16),
+                const Text('Crie sua conta',
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Nome completo',
+                    prefixIcon: Icon(Icons.person),
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-          ],
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _passCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Senha',
+                    prefixIcon: Icon(Icons.lock),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _confirmCtrl,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirmar senha',
+                    prefixIcon: Icon(Icons.lock_outline),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _loading
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton.icon(
+                        icon: const Icon(Icons.check),
+                        label: const Text('Cadastrar'),
+                        onPressed: _doSignUp,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
+                      ),
+              ],
+            ),
+          ),
         ),
       ),
     );
