@@ -17,6 +17,8 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   final Set<String> _selectedDays = {};
   final List<TimeOfDay> _times = [];
 
+  DateTime? _startDate;
+  DateTime? _endDate;
   bool _saving = false;
 
   @override
@@ -30,6 +32,8 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
         final parts = h.split(':');
         return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
       }));
+      _startDate = med.startDate;
+      _endDate = med.endDate;
     }
   }
 
@@ -48,21 +52,17 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
 
   Future<void> _submit() async {
     final name = _nameCtrl.text.trim();
-    if (name.isEmpty || _selectedDays.isEmpty || _times.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos')),
-      );
-      return;
-    }
+    if (name.isEmpty || _selectedDays.isEmpty || _times.isEmpty) return;
 
     setState(() => _saving = true);
-    final schedules = _times.map((t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}').toList();
 
     final med = Medication(
       id: widget.medication?.id,
       name: name,
       days: _selectedDays.toList(),
-      schedules: schedules,
+      schedules: _times.map((t) => "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}").toList(),
+      startDate: _startDate,
+      endDate: _endDate,
     );
 
     await widget.onSave(med);
@@ -70,70 +70,86 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   }
 
   @override
-  Widget build(BuildContext ctx) {
+  Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.medication == null ? 'Nova Medicação' : 'Editar Medicação'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      appBar: AppBar(title: const Text('Nova Medicação')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: ListView(
           children: [
-            TextField(
+            TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nome do medicamento',
-                border: OutlineInputBorder(),
-              ),
+              decoration: const InputDecoration(labelText: 'Nome do Medicamento'),
             ),
-            const SizedBox(height: 20),
-            const Text('Dias da semana', style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 8,
-              children: _weekdays.map((day) {
-                final selected = _selectedDays.contains(day);
-                return ChoiceChip(
-                  label: Text(day),
+              children: _weekdays.map((dia) {
+                final selected = _selectedDays.contains(dia);
+                return FilterChip(
+                  label: Text(dia),
                   selected: selected,
-                  onSelected: (_) {
+                  onSelected: (val) {
                     setState(() {
-                      if (selected) {
-                        _selectedDays.remove(day);
+                      if (val) {
+                        _selectedDays.add(dia);
                       } else {
-                        _selectedDays.add(day);
+                        _selectedDays.remove(dia);
                       }
                     });
                   },
                 );
               }).toList(),
             ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Horários', style: TextStyle(fontWeight: FontWeight.bold)),
-                IconButton(onPressed: _addTime, icon: const Icon(Icons.add)),
-              ],
-            ),
+            const SizedBox(height: 16),
             ..._times.map((t) => ListTile(
                   title: Text(_formatTime(t)),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () => _removeTime(t),
-                  ),
+                  trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () => _removeTime(t)),
                 )),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.access_time),
+              label: const Text('Adicionar horário'),
+              onPressed: _addTime,
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              title: const Text("Data de início"),
+              subtitle: Text(_startDate != null
+                  ? "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"
+                  : "Opcional"),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (picked != null) setState(() => _startDate = picked);
+              },
+            ),
+            ListTile(
+              title: const Text("Data de término"),
+              subtitle: Text(_endDate != null
+                  ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
+                  : "Opcional"),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (picked != null) setState(() => _endDate = picked);
+              },
+            ),
             const SizedBox(height: 24),
-            _saving
-                ? const Center(child: CircularProgressIndicator())
-                : SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      icon: const Icon(Icons.check),
-                      label: const Text('Salvar'),
-                      onPressed: _submit,
-                    ),
-                  ),
+            ElevatedButton.icon(
+              icon: const Icon(Icons.save),
+              label: const Text('Salvar'),
+              onPressed: _submit,
+            ),
           ],
         ),
       ),

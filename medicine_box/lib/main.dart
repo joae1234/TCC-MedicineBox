@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'pages/welcome_page.dart';
 import 'pages/sign_in_page.dart';
 import 'pages/medication_list_page.dart';
 
@@ -14,21 +16,29 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp();
+  const MyApp({super.key});
+
   @override
-  Widget build(BuildContext ctx) {
+  Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Medication Reminder',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: StreamBuilder<AuthChangeEvent>(
-        stream: Supabase.instance.client.auth.onAuthStateChange.map((e) => e.event),
-        builder: (ctx, snap) {
-          final session = Supabase.instance.client.auth.currentSession;
-          return session == null
-            ? const SignInPage()
-            : const MedicationListPage();
-        },
+      theme: ThemeData(
+        primarySwatch: Colors.teal,
+        fontFamily: 'Roboto',
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.teal,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Colors.grey[100],
+        ),
       ),
+      // Mostra WelcomePage como primeira tela
+      home: const WelcomePage(),
       debugShowCheckedModeBanner: false,
     );
   }
