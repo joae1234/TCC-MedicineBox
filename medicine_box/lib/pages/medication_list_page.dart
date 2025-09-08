@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:medicine_box/models/profile_model.dart';
+import 'package:medicine_box/services/medication_schedule_service.dart';
+import 'package:medicine_box/services/profile_service.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:uuid/uuid.dart';
 import '../models/medication.dart';
@@ -17,9 +20,14 @@ class MedicationListPage extends StatefulWidget {
 
 class _MedicationListPageState extends State<MedicationListPage> {
   final _medSvc = MedicationService();
+  final _profileSvc = ProfileService();
+  final _medScheduleSvc = MedicationScheduleService();
   final _mqtt = MqttService();
   List<Medication> _meds = [];
+  Profile? _userProfile;
+  bool _loadingMqtt = true;
   bool _loading = true;
+  bool _isConnectionSuccessful = false;
   Timer? _checkTimer;
 
   String? _lastMedId;
@@ -33,8 +41,21 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Future<void> _init() async {
-    await _mqtt.connect();
-    _listenMqtt();
+    print("testando inicio");
+    setState(() => _loadingMqtt = true);
+    _mqtt.connect().then((result) {
+      if (mounted) {
+        setState(() => _loadingMqtt = false);
+        setState(() => _isConnectionSuccessful = result);
+      }
+      _listenMqtt();
+    }).catchError((e) {
+      if (mounted) {
+        setState(() => _loadingMqtt = false);
+        setState(() => _isConnectionSuccessful = false);
+      }
+    });
+
     await _reload();
     _startAlarmLoop();
   }
@@ -94,7 +115,9 @@ class _MedicationListPageState extends State<MedicationListPage> {
           _lastAlarmTime = now;
 
           _medSvc.savePreAlarm(id: newId, medId: med.id!, timestamp: now);
-          _mqtt.sendCommand("on");
+          if (_isConnectionSuccessful) {
+            _mqtt.sendCommand("on");
+          }
           _showAlarmPopup(med);
           return;
         }
@@ -121,7 +144,9 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Future<void> _reload() async {
-    setState(() => _loading = true);
+    if (mounted) setState(() => _loading = true);
+    _userProfile = await _profileSvc.getOwnProfile();
+
     final now = DateTime.now();
     final meds = await _medSvc.getAll();
 
@@ -138,6 +163,18 @@ class _MedicationListPageState extends State<MedicationListPage> {
     if (mounted) setState(() => _loading = false);
   }
 
+  Future<void> _saveNewMedication(Medication newMed) async {
+    final med = await _medSvc.upsert(newMed);
+    await _medScheduleSvc.upsertMedicationSchedule(
+      med.id ?? '',
+      newMed.startDate ?? DateTime.now(),
+      newMed.endDate ?? DateTime.now().add(const Duration(days: 30)),
+      newMed.days,
+      newMed.schedules,
+    );
+    await _reload();
+  }
+
   @override
   void dispose() {
     _checkTimer?.cancel();
@@ -147,20 +184,58 @@ class _MedicationListPageState extends State<MedicationListPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Minhas Medicações'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add),
-            tooltip: 'Convidar cuidador',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const InviteCaregiverPage()),
-              );
-            },
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                _loadingMqtt
+                    ? const Icon(Icons.sync, color: Colors.orange)
+                    : _isConnectionSuccessful 
+                      ? const Icon(Icons.check_circle, color: Colors.green) 
+                      : const Icon(Icons.close, color: Colors.red),
+                const SizedBox(width: 6),
+                _loadingMqtt
+                    ? const Text("Conectando...",
+                      style: TextStyle(fontSize: 12, color: Colors.orange))
+                    : _isConnectionSuccessful
+                      ? const Text("Conectado",
+                        style: TextStyle(fontSize: 12, color: Colors.green))
+                      : const Text("Falha na conexão",
+                        style: TextStyle(fontSize: 12, color: Colors.red)),
+              ],
+            ),
           ),
+          _userProfile?.caregiverId == null || _userProfile!.caregiverId!.isEmpty
+            ? TextButton.icon(
+                icon: const Icon(Icons.person_add),
+                label: const Text("ADICIONAR CUIDADOR"),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const InviteCaregiverPage()),
+                  );
+                },
+              )
+            : TextButton.icon(
+                icon: const Icon(Icons.person),
+                label: const Text("CUIDADOR: João da Silva"), 
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const InviteCaregiverPage()),
+                  );
+                },
+              ),
           IconButton(
             icon: const Icon(Icons.history),
             tooltip: 'Histórico de doses',
@@ -182,10 +257,9 @@ class _MedicationListPageState extends State<MedicationListPage> {
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _meds.isEmpty
-              ? const Center(child: Text('Nenhuma medicação cadastrada.'))
+      body: _meds.isEmpty
+              ? const Center(
+                child: Text('Nenhuma medicação cadastrada.'))
               : ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: _meds.length,
@@ -281,6 +355,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
                   },
                 ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null,
         tooltip: 'Adicionar Medicação',
         child: const Icon(Icons.add),
         onPressed: () async {
@@ -289,7 +364,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
             MaterialPageRoute(
               builder: (_) => MedicationFormPage(
                 onSave: (newMed) async {
-                  await _medSvc.upsert(newMed);
+                  await _saveNewMedication(newMed);
                   await _reload();
                 },
               ),

@@ -19,6 +19,21 @@ class ProfileService {
     }
   }
 
+  Future<Profile> getCaregiverProfile(String id) async {
+    try {
+      final data = await _db
+        .from('profiles')
+        .select<Map<String, dynamic>>()     
+        .eq('id', id)
+        .eq('role', 'caregiver')
+        .single();                         
+
+      return Profile.fromMap(data);
+    } catch (e) {
+      throw Exception('Erro ao buscar perfil do cuidador: $e');
+    }
+  }
+
   /// Insere ou atualiza o perfil [p].
   Future<void> upsertProfile(Profile p) async {
     try {

@@ -20,13 +20,20 @@ class MedicationService {
   }
 
   /// Cria ou atualiza uma medicação (upsert)
-  Future<void> upsert(Medication med) async {
+  Future<Medication> upsert(Medication med) async {
     final user = _db.auth.currentUser;
     if (user == null) throw Exception('Usuário não autenticado');
 
     final payload = med.toMap()..['user_id'] = user.id;
 
-    await _db.from('medications').upsert(payload);
+    final result = await _db
+      .from('medications')
+      .upsert(payload)
+      .select()
+      .single();
+    print("remedio criado: $result");
+
+    return Medication.fromMap(result);
   }
 
   /// Remove uma medicação
@@ -43,14 +50,14 @@ class MedicationService {
     final user = _db.auth.currentUser;
     if (user == null) throw Exception('Usuário não autenticado');
 
-    await _db.from('medication_history').insert({
-      'id': id,
-      'user_id': user.id,
-      'medication_id': medId,
-      'taken_at': timestamp.toUtc().toIso8601String(),
-      'delay_secs': 0,
-      'status': 'Aguardando',
-    });
+    // await _db.from('medication_history').insert({
+    //   'id': id,
+    //   'user_id': user.id,
+    //   'medication_id': medId,
+    //   'taken_at': timestamp.toUtc().toIso8601String(),
+    //   'delay_secs': 0,
+    //   'status': 'Aguardando',
+    // });
   }
 
   /// Atualiza o status de um histórico (chamado quando a medicação é detectada via sensor)

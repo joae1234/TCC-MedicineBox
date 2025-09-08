@@ -9,7 +9,7 @@ class MqttService {
   final String topicStatus = 'remedio/estado';
   final String topicCommand = 'comando/led';
 
-  Future<void> connect() async {
+  Future<bool> connect() async {
     client = MqttBrowserClient(
       brokerUrl,
       'flutter_${DateTime.now().millisecondsSinceEpoch}',
@@ -28,7 +28,10 @@ class MqttService {
     } catch (e) {
       print('❌ Erro ao conectar: $e');
       isConnected = false;
+      return isConnected;
     }
+
+    return isConnected;
   }
 
   void _onConnected() {
@@ -68,7 +71,7 @@ class MqttService {
     print('📤 Publicado: "$cmd" em "$topic"');
   }
 
-  void sendCommand(String command) => publishCommand(command, topicCommand);
+    void sendCommand(String command) => publishCommand(command, topicCommand);
 
   void disconnect() {
     if (isConnected) {

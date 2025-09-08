@@ -53,6 +53,9 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   Future<void> _submit() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty || _selectedDays.isEmpty || _times.isEmpty) return;
+    
+    _startDate ??= DateTime.now().toUtc();
+    _endDate ??= _startDate!.add(const Duration(days: 30));
 
     setState(() => _saving = true);
 
@@ -114,32 +117,36 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
             const SizedBox(height: 16),
             ListTile(
               title: const Text("Data de início"),
-              subtitle: Text(_startDate != null
+              subtitle: Text(
+                _startDate != null
                   ? "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"
-                  : "Opcional"),
+                  : "Selecione a data inicial",
+              ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,
                   initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().toUtc().add(Duration(days: 365)),
                 );
                 if (picked != null) setState(() => _startDate = picked);
               },
             ),
             ListTile(
               title: const Text("Data de término"),
-              subtitle: Text(_endDate != null
+              subtitle: Text(
+                _endDate != null
                   ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
-                  : "Opcional"),
+                  : "Selecione a data final",
+              ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
                 final picked = await showDatePicker(
                   context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2100),
+                  initialDate: DateTime.now().add(Duration(days: 1)),
+                  firstDate: DateTime.now().add(Duration(days: 1)),
+                  lastDate: DateTime.now().add(Duration(days: 365)),
                 );
                 if (picked != null) setState(() => _endDate = picked);
               },
