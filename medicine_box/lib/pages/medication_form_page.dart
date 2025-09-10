@@ -38,9 +38,26 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   }
 
   void _addTime() async {
-    final picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-    if (picked != null && !_times.contains(picked)) {
-      setState(() => _times.add(picked));
+    final now = TimeOfDay.now();
+    final picked = await showTimePicker(
+      context: context, 
+      initialTime: now,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      // força para múltiplos de 30
+      final normalizedMinute = (picked.minute < 30) ? 0 : 30;
+      final adjusted = TimeOfDay(hour: picked.hour, minute: normalizedMinute);
+
+      setState(() {
+        _times.add(adjusted);
+      });
     }
   }
 

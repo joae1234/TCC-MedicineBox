@@ -11,11 +11,6 @@ class MedicationHistoryPage extends StatelessWidget {
     required this.medNames,
   }) : super(key: key);
 
-  String _formatDate(DateTime dt) {
-    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} '
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,9 +26,9 @@ class MedicationHistoryPage extends StatelessWidget {
                   margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: ListTile(
                     title: Text(nome, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(
-                      'Horário: ${_formatDate(h.takenAt)}\nTomado após: ${h.delaySecs} segundos',
-                    ),
+                    // subtitle: Text(
+                    //   'Horário: ${_formatDate(h.takenAt)}\nTomado após: ${h.delaySecs} segundos',
+                    // ),
                     leading: const Icon(Icons.history),
                   ),
                 );

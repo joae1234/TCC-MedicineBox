@@ -1,3 +1,4 @@
+import 'package:medicine_box/models/medication_history.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MedicationScheduleService {
@@ -12,7 +13,9 @@ class MedicationScheduleService {
   ) async {
     try {
       final user = _db.auth.currentUser;
-      if (user == null) return;
+      if (user == null) {
+        throw Exception('Usuário não autenticado.');
+      }
 
       final dayMapping = {
         "Seg": DateTime.monday,
@@ -66,7 +69,63 @@ class MedicationScheduleService {
         await _db.from('medication_history').upsert(inserts);
       }
     } catch (e) {
-      print('❌ Erro ao limpar agendamentos antigos: $e');
+      throw Exception('Erro ao gerar os alertas para este medicamento: $e');
+    }
+  }
+
+  Future<MedicationHistory?> getUserNextMedication() async {
+    try {
+      print("pegando a proxima medicação...");
+      final user = _db.auth.currentUser;
+      if (user == null) {
+        throw Exception('Usuário não autenticado.');
+      }
+
+    print("usuario id: $user.id");
+
+      final response = await _db
+          .from('medication_history')
+          .select()
+          .eq('user_id', user.id)
+          .eq('status', 'Scheduled')
+          .order('scheduled_at', ascending: true)
+          .limit(1)
+          .single();
+
+      if (response == null) return null;        
+
+      print("próxima medicação encontrada: $response");
+      print("scheduled at: ${response['taken_at']}");
+
+      return MedicationHistory.fromMap({
+        'id': response['id'],
+        'user_id': response['user_id'],
+        'medication_id': response['medication_id'],
+        'scheduled_at': response['scheduled_at'],
+        'taken_at': response['taken_at'],
+        'status': response['status'],
+        'created_at': response['created_at'],
+      });
+    }
+    catch (e) {
+      throw Exception('Erro buscar a próxima medicação do usuário: $e');
+    }
+  }
+
+  Future<void>? updateMedicationStatus(
+    String id,
+    String status,
+    DateTime? takenAt,
+  ) async{
+    try {
+      await _db.from('medication_history')
+        .update({
+          'status': status,
+          'taken_at': takenAt?.toUtc().toIso8601String(),
+        })
+        .eq('id', id);
+    } catch (e) {
+      throw Exception('Erro ao atualizar o status da medicação: $e');
     }
   }
 }

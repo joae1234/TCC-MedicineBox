@@ -5,6 +5,18 @@ import '../models/medication_history.dart';
 class MedicationService {
   final SupabaseClient _db = Supabase.instance.client;
 
+  Future<Medication?> getById(String id) async {
+    final row = await _db
+        .from('medications')
+        .select()
+        .eq('id', id)
+        .single();
+
+    if (row == null) return null;
+
+    return Medication.fromMap(row);
+  }
+
   /// Carrega todas as medicações do usuário autenticado
   Future<List<Medication>> getAll() async {
     final user = _db.auth.currentUser;
