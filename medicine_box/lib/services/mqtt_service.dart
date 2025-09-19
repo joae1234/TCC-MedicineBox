@@ -1,8 +1,8 @@
 import 'package:mqtt_client/mqtt_client.dart';
-import 'package:mqtt_client/mqtt_browser_client.dart';
+import 'package:mqtt_client/mqtt_server_client.dart';
 
 class MqttService {
-  late MqttBrowserClient client;
+  late MqttServerClient client;
   bool isConnected = false;
   final String brokerUrl = 'wss://mqtt.eclipseprojects.io/mqtt';
   final int brokerPort = 443;
@@ -10,15 +10,16 @@ class MqttService {
   final String topicCommand = 'comando/led';
 
   Future<bool> connect() async {
-    client = MqttBrowserClient(
-      brokerUrl,
-      'flutter_${DateTime.now().millisecondsSinceEpoch}',
-    )
-      ..port = brokerPort
-      ..keepAlivePeriod = 30
-      ..onConnected = _onConnected
-      ..onDisconnected = _onDisconnected
-      ..logging(on: false);
+    client =
+        MqttServerClient(
+            brokerUrl,
+            'flutter_${DateTime.now().millisecondsSinceEpoch}',
+          )
+          ..port = brokerPort
+          ..keepAlivePeriod = 30
+          ..onConnected = _onConnected
+          ..onDisconnected = _onDisconnected
+          ..logging(on: false);
 
     client.onSubscribed = (topic) => print('✅ Inscrito em $topic');
 
@@ -71,7 +72,7 @@ class MqttService {
     print('📤 Publicado: "$cmd" em "$topic"');
   }
 
-    void sendCommand(String command) => publishCommand(command, topicCommand);
+  void sendCommand(String command) => publishCommand(command, topicCommand);
 
   void disconnect() {
     if (isConnected) {
