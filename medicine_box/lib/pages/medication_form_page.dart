@@ -43,27 +43,79 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   }
 
   void _addTime() async {
-    final now = TimeOfDay.now();
-    final picked = await showTimePicker(
+    final hours = List.generate(24, (i) => i);
+
+    final selected = await showDialog<int>(
       context: context,
-      initialTime: now,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
+      builder: (ctx) {
+        return Dialog(
+          child: SizedBox(
+            width: MediaQuery.of(ctx).size.width * 0.5,
+            height: MediaQuery.of(ctx).size.height * 0.3,
+            child: SimpleDialog(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
+              ),
+              titlePadding: EdgeInsets.zero,
+              title: Container(
+                width: double.infinity,
+                color: Colors.blue,
+                padding: const EdgeInsets.all(8),
+                child: const Center(
+                  child: Text(
+                    "Selecione o horário",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+              ),
+              children:
+                  hours
+                      .map(
+                        (h) => SimpleDialogOption(
+                          onPressed: () => Navigator.pop(ctx, h),
+                          child: Center(
+                            child: Text(
+                              '${h.toString().padLeft(2, '0')}:00:00',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+            ),
+          ),
         );
       },
     );
 
-    if (picked != null) {
-      // força para múltiplos de 30
-      final normalizedMinute = (picked.minute < 30) ? 0 : 30;
-      final adjusted = TimeOfDay(hour: picked.hour, minute: normalizedMinute);
-
+    if (selected != null) {
       setState(() {
-        _times.add(adjusted);
+        _times.add(TimeOfDay(hour: selected, minute: 0));
       });
     }
+
+    // final now = TimeOfDay.now();
+    // final picked = await showTimePicker(
+    //   context: context,
+    //   initialTime: now,
+    //   builder: (context, child) {
+    //     return MediaQuery(
+    //       data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+    //       child: child!,
+    //     );
+    //   },
+    // );
+
+    // if (picked != null) {
+    //   // força para múltiplos de 30
+    //   final normalizedMinute = (picked.minute < 30) ? 0 : 30;
+    //   final adjusted = TimeOfDay(hour: picked.hour, minute: normalizedMinute);
+
+    //   setState(() {
+    //     _times.add(adjusted);
+    //   });
+    // }
   }
 
   void _removeTime(TimeOfDay t) {

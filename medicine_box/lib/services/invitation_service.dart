@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class InvitationService {
   final SupabaseClient _db = Supabase.instance.client;
 
-  // TO DO TRANSFORMAR ISSO AQUI EM POPUP
   Future<void> sendInvitation(String caregiverName) async {
     try {
       final response =
@@ -13,8 +12,6 @@ class InvitationService {
               .eq('full_name', caregiverName)
               .eq('role', 'caregiver')
               .maybeSingle();
-
-      print("Response: ${response}");
 
       if (response == null) {
         throw Exception('Cuidador não encontrado.');

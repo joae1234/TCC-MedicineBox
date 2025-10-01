@@ -1,3 +1,4 @@
+import 'package:medicine_box/models/base_request_result.dart';
 import 'package:medicine_box/models/medication_history.dart';
 import 'package:medicine_box/services/medication_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,7 +7,7 @@ class MedicationScheduleService {
   final SupabaseClient _db = Supabase.instance.client;
   final MedicationService _medSvc = MedicationService();
 
-  Future<void> upsertMedicationSchedule(
+  Future<BaseRequestResult<void>> upsertMedicationSchedule(
     String medicationId,
     DateTime startDate,
     DateTime endDate,
@@ -66,14 +67,6 @@ class MedicationScheduleService {
               'created_at': DateTime.now().toUtc().toIso8601String(),
               'scheduled_at': scheduledAt.toUtc().toIso8601String(),
             });
-
-            final scheduleAvailable = await isScheduleAvaiable(scheduledAt);
-            if (scheduleAvailable != null) {
-              print(
-                "Já existe uma medicação agendada para este período do dia: $scheduleAvailable",
-              );
-              return;
-            }
           }
         }
       }
@@ -81,6 +74,8 @@ class MedicationScheduleService {
       if (inserts.isNotEmpty) {
         await _db.from('medication_history').upsert(inserts);
       }
+
+      return BaseRequestResult.success(null);
     } catch (e) {
       throw Exception('Erro ao gerar os alertas para este medicamento: $e');
     }
@@ -136,31 +131,6 @@ class MedicationScheduleService {
           .eq('id', id);
     } catch (e) {
       throw Exception('Erro ao atualizar o status da medicação: $e');
-    }
-  }
-
-  Future<DateTime?> isScheduleAvaiable(DateTime scheduleTime) async {
-    try {
-      final isAm = scheduleTime.hour < 12;
-
-      final activeMeds = await _medSvc.getActiveMeds();
-
-      for (var med in activeMeds) {
-        for (var sched in med.schedules) {
-          final schedDateTime = DateTime.tryParse(sched);
-
-          final isSchedTimeAm =
-              schedDateTime != null && schedDateTime.hour < 12;
-
-          if (isAm == isSchedTimeAm) {
-            return schedDateTime;
-          }
-        }
-      }
-
-      return null;
-    } catch (e) {
-      throw Exception('Erro buscar a próxima medicação do usuário: $e');
     }
   }
 }
