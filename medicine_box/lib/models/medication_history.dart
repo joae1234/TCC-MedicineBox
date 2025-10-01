@@ -18,27 +18,28 @@ class MedicationHistory {
   });
 
   static DateTime _toDate(dynamic v) =>
-    v is DateTime ? v : DateTime.parse(v as String);
+      v is DateTime ? v : DateTime.parse(v as String).toLocal();
 
   static DateTime? _toDateOrNull(dynamic v) =>
-      v == null ? null : _toDate(v);
+      v == null ? null : _toDate(v).toLocal();
 
-  factory MedicationHistory.fromMap(Map<String, dynamic> map) => MedicationHistory(
-    id: map['id'],
-    userId: map['user_id'],
-    medicationId: map['medication_id'],
-    takenAt: _toDateOrNull(map['taken_at']),
-    status: map['status'],
-    scheduled_at: _toDate(map['scheduled_at']),
-    created_at: _toDate(map['created_at']),
-  );
+  factory MedicationHistory.fromMap(Map<String, dynamic> map) =>
+      MedicationHistory(
+        id: map['id'],
+        userId: map['user_id'],
+        medicationId: map['medication_id'],
+        takenAt: _toDateOrNull(map['taken_at']),
+        status: map['status'],
+        scheduled_at: _toDate(map['scheduled_at']),
+        created_at: _toDate(map['created_at']),
+      );
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'user_id': userId,
-    'medication_id': medicationId,
+    'id': id.toString(),
+    'user_id': userId.toString(),
+    'medication_id': medicationId.toString(),
     'taken_at': takenAt?.toUtc().toIso8601String(),
-    'status': status,
+    'status': status.toString(),
     'scheduled_at': scheduled_at.toUtc().toIso8601String(),
     'created_at': created_at.toUtc().toIso8601String(),
   };

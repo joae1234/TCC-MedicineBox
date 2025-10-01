@@ -1,8 +1,10 @@
 import 'package:medicine_box/models/medication_history.dart';
+import 'package:medicine_box/services/medication_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MedicationScheduleService {
   final SupabaseClient _db = Supabase.instance.client;
+  final MedicationService _medSvc = MedicationService();
 
   Future<void> upsertMedicationSchedule(
     String medicationId,
@@ -25,19 +27,22 @@ class MedicationScheduleService {
         "Sex": DateTime.friday,
         "Sab": DateTime.saturday,
         "Dom": DateTime.sunday,
-      };  
+      };
 
-      final selectedWeekDays = days
-        .map((d) => dayMapping[d])
-        .where((d) => d != null)
-        .cast<int>()
-        .toSet();
+      final selectedWeekDays =
+          days
+              .map((d) => dayMapping[d])
+              .where((d) => d != null)
+              .cast<int>()
+              .toSet();
 
       final inserts = <Map<String, dynamic>>[];
 
-      for (var date = startDate;
-          !date.isAfter(endDate);
-          date = date.add(const Duration(days: 1))) {
+      for (
+        var date = startDate;
+        !date.isAfter(endDate);
+        date = date.add(const Duration(days: 1))
+      ) {
         if (selectedWeekDays.contains(date.weekday)) {
           for (final sched in schedules) {
             final parts = sched.split(":");
@@ -61,6 +66,14 @@ class MedicationScheduleService {
               'created_at': DateTime.now().toUtc().toIso8601String(),
               'scheduled_at': scheduledAt.toUtc().toIso8601String(),
             });
+
+            final scheduleAvailable = await isScheduleAvaiable(scheduledAt);
+            if (scheduleAvailable != null) {
+              print(
+                "Já existe uma medicação agendada para este período do dia: $scheduleAvailable",
+              );
+              return;
+            }
           }
         }
       }
@@ -73,29 +86,26 @@ class MedicationScheduleService {
     }
   }
 
-  Future<MedicationHistory?> getUserNextMedication() async {
+  Future<MedicationHistory?> getUserNextMedication(DateTime? time) async {
     try {
-      print("pegando a proxima medicação...");
       final user = _db.auth.currentUser;
       if (user == null) {
         throw Exception('Usuário não autenticado.');
       }
 
-    print("usuario id: $user.id");
-
-      final response = await _db
+      var query = _db
           .from('medication_history')
           .select()
           .eq('user_id', user.id)
-          .eq('status', 'Scheduled')
-          .order('scheduled_at', ascending: true)
-          .limit(1)
-          .single();
+          .eq('status', 'Scheduled');
 
-      if (response == null) return null;        
+      final response =
+          await query
+              .order('scheduled_at', ascending: true)
+              .limit(1)
+              .maybeSingle();
 
-      print("próxima medicação encontrada: $response");
-      print("scheduled at: ${response['taken_at']}");
+      if (response == null) return null;
 
       return MedicationHistory.fromMap({
         'id': response['id'],
@@ -106,8 +116,7 @@ class MedicationScheduleService {
         'status': response['status'],
         'created_at': response['created_at'],
       });
-    }
-    catch (e) {
+    } catch (e) {
       throw Exception('Erro buscar a próxima medicação do usuário: $e');
     }
   }
@@ -116,16 +125,42 @@ class MedicationScheduleService {
     String id,
     String status,
     DateTime? takenAt,
-  ) async{
+  ) async {
     try {
-      await _db.from('medication_history')
-        .update({
-          'status': status,
-          'taken_at': takenAt?.toUtc().toIso8601String(),
-        })
-        .eq('id', id);
+      await _db
+          .from('medication_history')
+          .update({
+            'status': status,
+            'taken_at': takenAt?.toUtc().toIso8601String(),
+          })
+          .eq('id', id);
     } catch (e) {
       throw Exception('Erro ao atualizar o status da medicação: $e');
+    }
+  }
+
+  Future<DateTime?> isScheduleAvaiable(DateTime scheduleTime) async {
+    try {
+      final isAm = scheduleTime.hour < 12;
+
+      final activeMeds = await _medSvc.getActiveMeds();
+
+      for (var med in activeMeds) {
+        for (var sched in med.schedules) {
+          final schedDateTime = DateTime.tryParse(sched);
+
+          final isSchedTimeAm =
+              schedDateTime != null && schedDateTime.hour < 12;
+
+          if (isAm == isSchedTimeAm) {
+            return schedDateTime;
+          }
+        }
+      }
+
+      return null;
+    } catch (e) {
+      throw Exception('Erro buscar a próxima medicação do usuário: $e');
     }
   }
 }

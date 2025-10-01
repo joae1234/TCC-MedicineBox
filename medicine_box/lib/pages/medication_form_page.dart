@@ -5,7 +5,7 @@ class MedicationFormPage extends StatefulWidget {
   final Medication? medication;
   final Future<void> Function(Medication) onSave;
 
-  const MedicationFormPage({Key? key, this.medication, required this.onSave}) : super(key: key);
+  const MedicationFormPage({super.key, this.medication, required this.onSave});
 
   @override
   State<MedicationFormPage> createState() => _MedicationFormPageState();
@@ -28,10 +28,15 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
     if (med != null) {
       _nameCtrl.text = med.name;
       _selectedDays.addAll(med.days);
-      _times.addAll(med.schedules.map((h) {
-        final parts = h.split(':');
-        return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
-      }));
+      _times.addAll(
+        med.schedules.map((h) {
+          final parts = h.split(':');
+          return TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
+        }),
+      );
       _startDate = med.startDate;
       _endDate = med.endDate;
     }
@@ -40,7 +45,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   void _addTime() async {
     final now = TimeOfDay.now();
     final picked = await showTimePicker(
-      context: context, 
+      context: context,
       initialTime: now,
       builder: (context, child) {
         return MediaQuery(
@@ -70,7 +75,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   Future<void> _submit() async {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty || _selectedDays.isEmpty || _times.isEmpty) return;
-    
+
     _startDate ??= DateTime.now().toUtc();
     _endDate ??= _startDate!.add(const Duration(days: 30));
 
@@ -80,7 +85,13 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
       id: widget.medication?.id,
       name: name,
       days: _selectedDays.toList(),
-      schedules: _times.map((t) => "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}").toList(),
+      schedules:
+          _times
+              .map(
+                (t) =>
+                    "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}",
+              )
+              .toList(),
       startDate: _startDate,
       endDate: _endDate,
     );
@@ -99,33 +110,41 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
           children: [
             TextFormField(
               controller: _nameCtrl,
-              decoration: const InputDecoration(labelText: 'Nome do Medicamento'),
+              decoration: const InputDecoration(
+                labelText: 'Nome do Medicamento',
+              ),
             ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
-              children: _weekdays.map((dia) {
-                final selected = _selectedDays.contains(dia);
-                return FilterChip(
-                  label: Text(dia),
-                  selected: selected,
-                  onSelected: (val) {
-                    setState(() {
-                      if (val) {
-                        _selectedDays.add(dia);
-                      } else {
-                        _selectedDays.remove(dia);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
+              children:
+                  _weekdays.map((dia) {
+                    final selected = _selectedDays.contains(dia);
+                    return FilterChip(
+                      label: Text(dia),
+                      selected: selected,
+                      onSelected: (val) {
+                        setState(() {
+                          if (val) {
+                            _selectedDays.add(dia);
+                          } else {
+                            _selectedDays.remove(dia);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 16),
-            ..._times.map((t) => ListTile(
-                  title: Text(_formatTime(t)),
-                  trailing: IconButton(icon: const Icon(Icons.delete), onPressed: () => _removeTime(t)),
-                )),
+            ..._times.map(
+              (t) => ListTile(
+                title: Text(_formatTime(t)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () => _removeTime(t),
+                ),
+              ),
+            ),
             ElevatedButton.icon(
               icon: const Icon(Icons.access_time),
               label: const Text('Adicionar horário'),
@@ -136,8 +155,8 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
               title: const Text("Data de início"),
               subtitle: Text(
                 _startDate != null
-                  ? "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"
-                  : "Selecione a data inicial",
+                    ? "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"
+                    : "Selecione a data inicial",
               ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {
@@ -154,8 +173,8 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
               title: const Text("Data de término"),
               subtitle: Text(
                 _endDate != null
-                  ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
-                  : "Selecione a data final",
+                    ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
+                    : "Selecione a data final",
               ),
               trailing: const Icon(Icons.calendar_today),
               onTap: () async {

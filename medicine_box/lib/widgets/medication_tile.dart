@@ -5,14 +5,14 @@ import '../models/medication.dart';
 class MedicationTile extends StatelessWidget {
   final Medication medication;
   final void Function(Medication) onEdit;
-  final VoidCallback onDelete;    
+  final VoidCallback onDelete;
 
   const MedicationTile({
-    Key? key,
+    super.key,
     required this.medication,
     required this.onEdit,
-    required this.onDelete,        
-  }) : super(key: key);
+    required this.onDelete,
+  });
 
   @override
   Widget build(BuildContext ctx) {
@@ -34,7 +34,7 @@ class MedicationTile extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.delete),
               tooltip: 'Remover',
-              onPressed: onDelete,    
+              onPressed: onDelete,
             ),
           ],
         ),

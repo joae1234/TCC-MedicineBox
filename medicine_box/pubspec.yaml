@@ -40,6 +40,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   mask_text_input_formatter: ^2.9.0
   dropdown_button2: ^2.3.9
+  sign_in_with_apple: ^6.0.0
+  webview_flutter: ^4.0.0
 
 dev_dependencies:
   flutter_test:
