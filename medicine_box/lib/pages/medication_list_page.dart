@@ -9,7 +9,6 @@ import '../services/medication_service.dart';
 import '../services/mqtt_service.dart';
 import 'medication_form_page.dart';
 import 'invite_caregiver_page.dart';
-import 'medication_history_page.dart';
 
 class MedicationListPage extends StatefulWidget {
   const MedicationListPage({super.key});
@@ -182,7 +181,58 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Future<void> _saveNewMedication(Medication newMed) async {
-    final med = await _medSvc.upsert(newMed);
+    final medResult = await _medSvc.upsert(newMed);
+
+    if (medResult.errorMessage != null &&
+        medResult.errorMessage!.startsWith("Horário indisponível")) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder:
+              (_) => AlertDialog(
+                title: const Text('Erro ao agendar a medicação'),
+                content: Text(medResult.errorMessage!),
+                actions: [
+                  ElevatedButton(
+                    child: const Text('NÃO'),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  ElevatedButton(
+                    child: const Text('SIM'),
+                    onPressed:
+                        () => {
+                          Navigator.pop(context),
+                          _updateMedication(newMed, medResult.errorMessage!),
+                        },
+                  ),
+                ],
+              ),
+        );
+      }
+    } else if (medResult.hasError || medResult.data == null) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder:
+              (_) => AlertDialog(
+                title: const Text('Erro ao agendar a medicação'),
+                content: Text(
+                  medResult.errorMessage ??
+                      'Não foi possível agendar a esta medicação nesse horário.',
+                ),
+                actions: [
+                  ElevatedButton(
+                    child: const Text('OK'),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+        );
+      }
+    }
+
+    final med = medResult.data!;
+
     await _medScheduleSvc.upsertMedicationSchedule(
       med.id ?? '',
       newMed.startDate ?? DateTime.now(),
@@ -190,7 +240,30 @@ class _MedicationListPageState extends State<MedicationListPage> {
       newMed.days,
       newMed.schedules,
     );
+
     await _reload();
+  }
+
+  Future<void> _updateMedication(Medication newMed, String message) async {
+    final regex = RegExp(r'\d{1,2}:\d{1,2}:\d{1,2}');
+    final matches = regex.allMatches(message).toList();
+
+    final time1 = matches.isNotEmpty ? matches[0].group(0) : null;
+    final time2 = matches.length > 1 ? matches[1].group(0) : null;
+
+    print(time1);
+    print(time2);
+
+    if (time1 == null || time2 == null) {
+      print("Erro ao extrair os horários da mensagem: $message");
+      return;
+    }
+
+    final timeIndex = newMed.schedules.indexOf(time1);
+    if (timeIndex != -1) {
+      newMed.schedules[timeIndex] = time2;
+      await _saveNewMedication(newMed);
+    }
   }
 
   @override

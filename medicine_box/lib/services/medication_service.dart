@@ -1,3 +1,4 @@
+import 'package:medicine_box/models/base_request_result.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/medication.dart';
 import '../models/medication_history.dart';
@@ -46,17 +47,27 @@ class MedicationService {
   }
 
   /// Cria ou atualiza uma medicação (upsert)
-  Future<Medication> upsert(Medication med) async {
+  Future<BaseRequestResult<Medication>> upsert(Medication med) async {
     final user = _db.auth.currentUser;
     if (user == null) throw Exception('Usuário não autenticado');
 
     final payload = med.toMap()..['user_id'] = user.id;
 
+    // for (final sched in med.schedules) {
+    //   final scheduleAvailable = await isScheduleAvaiable(sched);
+
+    //   if (scheduleAvailable != null) {
+    //     return BaseRequestResult.failure(
+    //       "Horário indisponível. Gostaria de alterar o horário  $sched para $scheduleAvailable?",
+    //     );
+    //   }
+    // }
+
     final result =
         await _db.from('medications').upsert(payload).select().single();
     print("remedio criado: $result");
 
-    return Medication.fromMap(result);
+    return BaseRequestResult.success(Medication.fromMap(result));
   }
 
   /// Remove uma medicação
