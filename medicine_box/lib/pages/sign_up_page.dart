@@ -3,9 +3,11 @@ import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../models/profile_model.dart';
 import 'medication_list_page.dart';
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:dropdown_button2/dropdown_button2.dart';
 
 class SignUpPage extends StatefulWidget {
-  const SignUpPage({Key? key}) : super(key: key);
+  const SignUpPage({super.key});
   @override
   _SignUpPageState createState() => _SignUpPageState();
 }
@@ -15,6 +17,14 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _phoneFormatter = MaskTextInputFormatter(
+    mask: '(##) #####-####',
+    filter: {"#": RegExp(r'[0-9]')},
+    type: MaskAutoCompletionType.lazy,
+  );
+  final _roles_list = ['patient', 'caregiver'];
+  String _roleCtrl = '';
   bool _loading = false;
 
   @override
@@ -23,7 +33,9 @@ class _SignUpPageState extends State<SignUpPage> {
     _passCtrl.dispose();
     _confirmCtrl.dispose();
     _nameCtrl.dispose();
+    _phoneCtrl.dispose();
     super.dispose();
+    _roleCtrl = '';
   }
 
   Future<void> _doSignUp() async {
@@ -31,17 +43,19 @@ class _SignUpPageState extends State<SignUpPage> {
     final pass = _passCtrl.text;
     final confirm = _confirmCtrl.text;
     final fullName = _nameCtrl.text.trim();
+    final phoneNumber = _phoneFormatter.getUnmaskedText();
+    final role = _roleCtrl;
 
     if (email.isEmpty || pass.isEmpty || fullName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Preencha todos os campos')));
       return;
     }
     if (pass != confirm) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Senhas não conferem')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Senhas não conferem')));
       return;
     }
 
@@ -50,7 +64,14 @@ class _SignUpPageState extends State<SignUpPage> {
       await AuthService().signUp(email, pass);
       final user = AuthService().currentUser!;
       await ProfileService().upsertProfile(
-        Profile(id: user.id, email: user.email!, fullName: fullName, role: 'patient'),
+        Profile(
+          id: user.id,
+          email: user.email!,
+          fullName: fullName,
+          role: role,
+          phoneNumber: phoneNumber,
+          caregiverId: null,
+        ),
       );
 
       Navigator.pushAndRemoveUntil(
@@ -59,9 +80,9 @@ class _SignUpPageState extends State<SignUpPage> {
         (_) => false,
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao cadastrar: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao cadastrar: $e')));
     } finally {
       setState(() => _loading = false);
     }
@@ -79,8 +100,10 @@ class _SignUpPageState extends State<SignUpPage> {
               children: [
                 const Icon(Icons.person_add_alt, size: 80),
                 const SizedBox(height: 16),
-                const Text('Crie sua conta',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Crie sua conta',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 24),
                 TextField(
                   controller: _nameCtrl,
@@ -98,6 +121,49 @@ class _SignUpPageState extends State<SignUpPage> {
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email),
                     border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  inputFormatters: [_phoneFormatter],
+                  decoration: const InputDecoration(
+                    labelText: 'Telefone',
+                    prefixIcon: Icon(Icons.phone),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField2<String>(
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Tipo de usuário',
+                    prefixIcon: Icon(Icons.person_outline),
+                    border: OutlineInputBorder(),
+                  ),
+                  hint: const Text(
+                    'Selecione um perfil',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  items:
+                      _roles_list.map((role) {
+                        return DropdownMenuItem<String>(
+                          value: role,
+                          child: Text(
+                            role[0].toUpperCase() + role.substring(1),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
+                  value: _roleCtrl.isEmpty ? null : _roleCtrl,
+                  onChanged: (value) {
+                    setState(() {
+                      _roleCtrl = value!;
+                    });
+                  },
+                  dropdownStyleData: DropdownStyleData(
+                    maxHeight: 200, // altura máxima do menu
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -124,13 +190,13 @@ class _SignUpPageState extends State<SignUpPage> {
                 _loading
                     ? const CircularProgressIndicator()
                     : ElevatedButton.icon(
-                        icon: const Icon(Icons.check),
-                        label: const Text('Cadastrar'),
-                        onPressed: _doSignUp,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
+                      icon: const Icon(Icons.check),
+                      label: const Text('Cadastrar'),
+                      onPressed: _doSignUp,
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
                       ),
+                    ),
               ],
             ),
           ),

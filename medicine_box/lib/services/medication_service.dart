@@ -5,6 +5,14 @@ import '../models/medication_history.dart';
 class MedicationService {
   final SupabaseClient _db = Supabase.instance.client;
 
+  Future<Medication?> getById(String id) async {
+    final row = await _db.from('medications').select().eq('id', id).single();
+
+    if (row == null) return null;
+
+    return Medication.fromMap(row);
+  }
+
   /// Carrega todas as medicações do usuário autenticado
   Future<List<Medication>> getAll() async {
     final user = _db.auth.currentUser;
@@ -19,19 +27,42 @@ class MedicationService {
     return rows.map(Medication.fromMap).toList();
   }
 
+  /// Carrega todas as medicações ativas do usuário autenticado
+  Future<List<Medication>> getActiveMeds() async {
+    final user = _db.auth.currentUser;
+    if (user == null) return [];
+
+    final now = DateTime.now().toUtc();
+
+    final rows = await _db
+        .from('medications')
+        .select<List<Map<String, dynamic>>>()
+        .eq('user_id', user.id)
+        .lte('start_date', now.toIso8601String())
+        .or('end_date.gte.${now.toIso8601String()},end_date.is.null')
+        .order('created_at');
+
+    return rows.map(Medication.fromMap).toList();
+  }
+
   /// Cria ou atualiza uma medicação (upsert)
-  Future<void> upsert(Medication med) async {
+  Future<Medication> upsert(Medication med) async {
     final user = _db.auth.currentUser;
     if (user == null) throw Exception('Usuário não autenticado');
 
     final payload = med.toMap()..['user_id'] = user.id;
 
-    await _db.from('medications').upsert(payload);
+    final result =
+        await _db.from('medications').upsert(payload).select().single();
+    print("remedio criado: $result");
+
+    return Medication.fromMap(result);
   }
 
   /// Remove uma medicação
   Future<void> delete(String id) async {
-    await _db.from('medications').delete().eq('id', id);
+    //TO DO: adicionar soft delete
+    // await _db.from('medications').delete().eq('id', id);
   }
 
   /// Salva evento antes da tomada do remédio (pré-alarme)
@@ -43,38 +74,33 @@ class MedicationService {
     final user = _db.auth.currentUser;
     if (user == null) throw Exception('Usuário não autenticado');
 
-    await _db.from('medication_history').insert({
-      'id': id,
-      'user_id': user.id,
-      'medication_id': medId,
-      'taken_at': timestamp.toUtc().toIso8601String(),
-      'delay_secs': 0,
-      'status': 'Aguardando',
-    });
+    // await _db.from('medication_history').insert({
+    //   'id': id,
+    //   'user_id': user.id,
+    //   'medication_id': medId,
+    //   'taken_at': timestamp.toUtc().toIso8601String(),
+    //   'delay_secs': 0,
+    //   'status': 'Aguardando',
+    // });
   }
 
   /// Atualiza o status de um histórico (chamado quando a medicação é detectada via sensor)
   Future<void> updateStatus(String id, int delaySecs) async {
     print('🔄 Tentando atualizar o histórico com ID: $id');
 
-    final existing = await _db
-        .from('medication_history')
-        .select()
-        .eq('id', id);
+    final existing = await _db.from('medication_history').select().eq('id', id);
 
     if (existing.isEmpty) {
       print('❌ Nenhum histórico encontrado com ID: $id');
       return;
     }
 
-    final updated = await _db
-        .from('medication_history')
-        .update({
-          'status': 'Tomado',
-          'delay_secs': delaySecs,
-        })
-        .eq('id', id)
-        .select();
+    final updated =
+        await _db
+            .from('medication_history')
+            .update({'status': 'Tomado', 'delay_secs': delaySecs})
+            .eq('id', id)
+            .select();
 
     print('✅ Histórico atualizado: $updated');
   }

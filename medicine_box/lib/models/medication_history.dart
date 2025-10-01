@@ -2,34 +2,45 @@ class MedicationHistory {
   final String id;
   final String userId;
   final String medicationId;
-  final DateTime takenAt;
-  final int delaySecs;
+  final DateTime? takenAt;
   final String status;
+  final DateTime scheduled_at;
+  final DateTime created_at;
 
   MedicationHistory({
     required this.id,
     required this.userId,
     required this.medicationId,
     required this.takenAt,
-    required this.delaySecs,
-    this.status = 'Aguardando', // default status
+    required this.scheduled_at,
+    required this.created_at,
+    this.status = 'Scheduled',
   });
 
-  factory MedicationHistory.fromMap(Map<String, dynamic> map) => MedicationHistory(
-    id: map['id'],
-    userId: map['user_id'],
-    medicationId: map['medication_id'],
-    takenAt: DateTime.parse(map['taken_at']).toLocal(),  // 👈 adiciona .toLocal() se quiser mostrar local
-    delaySecs: map['delay_secs'],
-    status: map['status'],
-  );
+  static DateTime _toDate(dynamic v) =>
+      v is DateTime ? v : DateTime.parse(v as String).toLocal();
+
+  static DateTime? _toDateOrNull(dynamic v) =>
+      v == null ? null : _toDate(v).toLocal();
+
+  factory MedicationHistory.fromMap(Map<String, dynamic> map) =>
+      MedicationHistory(
+        id: map['id'],
+        userId: map['user_id'],
+        medicationId: map['medication_id'],
+        takenAt: _toDateOrNull(map['taken_at']),
+        status: map['status'],
+        scheduled_at: _toDate(map['scheduled_at']),
+        created_at: _toDate(map['created_at']),
+      );
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'user_id': userId,
-    'medication_id': medicationId,
-    'taken_at': takenAt.toUtc().toIso8601String(),  // 👈 armazena sempre em UTC
-    'delay_secs': delaySecs,
-    'status': status,
+    'id': id.toString(),
+    'user_id': userId.toString(),
+    'medication_id': medicationId.toString(),
+    'taken_at': takenAt?.toUtc().toIso8601String(),
+    'status': status.toString(),
+    'scheduled_at': scheduled_at.toUtc().toIso8601String(),
+    'created_at': created_at.toUtc().toIso8601String(),
   };
 }
