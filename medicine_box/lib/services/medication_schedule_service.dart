@@ -81,7 +81,7 @@ class MedicationScheduleService {
     }
   }
 
-  Future<MedicationHistory?> getUserNextMedication(DateTime? time) async {
+  Future<List<MedicationHistory>?> getUserNextMedication(DateTime? time) async {
     try {
       final user = _db.auth.currentUser;
       if (user == null) {
@@ -94,23 +94,33 @@ class MedicationScheduleService {
           .eq('user_id', user.id)
           .eq('status', 'Scheduled');
 
-      final response =
-          await query
-              .order('scheduled_at', ascending: true)
-              .limit(1)
-              .maybeSingle();
+      if (time != null) {
+        print("time não é nulo: $time");
+        query = query.eq('scheduled_at', time.toIso8601String());
+      }
+
+      final response = await query.order('scheduled_at', ascending: true);
+
+      print("Response do getUserNextMedication: $response");
 
       if (response == null) return null;
 
-      return MedicationHistory.fromMap({
-        'id': response['id'],
-        'user_id': response['user_id'],
-        'medication_id': response['medication_id'],
-        'scheduled_at': response['scheduled_at'],
-        'taken_at': response['taken_at'],
-        'status': response['status'],
-        'created_at': response['created_at'],
-      });
+      final List<MedicationHistory> list =
+          (response as List)
+              .map(
+                (e) => MedicationHistory.fromMap({
+                  'id': e['id'],
+                  'user_id': e['user_id'],
+                  'medication_id': e['medication_id'],
+                  'scheduled_at': e['scheduled_at'],
+                  'taken_at': e['taken_at'],
+                  'status': e['status'],
+                  'created_at': e['created_at'],
+                }),
+              )
+              .toList();
+
+      return list;
     } catch (e) {
       throw Exception('Erro buscar a próxima medicação do usuário: $e');
     }

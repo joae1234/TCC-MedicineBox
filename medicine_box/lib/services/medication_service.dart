@@ -6,12 +6,23 @@ import '../models/medication_history.dart';
 class MedicationService {
   final SupabaseClient _db = Supabase.instance.client;
 
-  Future<Medication?> getById(String id) async {
-    final row = await _db.from('medications').select().eq('id', id).single();
+  Future<List<Medication>?> getById(List<String> id) async {
+    try {
+      final response = await _db.from('medications').select().in_('id', id);
 
-    if (row == null) return null;
+      if (response == null) return null;
 
-    return Medication.fromMap(row);
+      final result =
+          (response as List)
+              .map((item) => Medication.fromMap(item as Map<String, dynamic>))
+              .toList();
+
+      print('Medicações carregadas por ID: $result');
+      return result;
+    } catch (e) {
+      print('Erro ao buscar medicações por ID: $e');
+      return null;
+    }
   }
 
   /// Carrega todas as medicações do usuário autenticado

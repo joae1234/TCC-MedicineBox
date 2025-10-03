@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:medicine_box/models/medication_alarm_details.dart';
 
 import 'package:medicine_box/models/medication_history.dart';
+import 'package:medicine_box/models/next_user_alarm.dart';
 import 'package:medicine_box/models/profile_model.dart';
 import 'package:medicine_box/services/medication_schedule_service.dart';
 import 'package:medicine_box/services/profile_service.dart';
@@ -33,8 +35,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
   final _mqtt = MqttService();
 
   List<Medication> _meds = [];
-  Medication? _nextMed;
-  MedicationHistory? _nextMedAlarm;
+  NextUserAlarm? _nextMedAlarm;
   Profile? _userProfile;
   bool _loadingMqtt = true;
   bool _loading = true;
@@ -76,8 +77,25 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   void _listenMqtt() {
-    // Caso volte a usar o listener, mantenha aqui.
-    // Exemplo comentado no seu código original.
+    // _mqtt.client.updates!.listen((events) async {
+    //   final recMess = events[0].payload as MqttPublishMessage;
+    //   final topic = events[0].topic;
+    //   final payloadBytes = recMess.payload.message;
+    //   final msg = MqttPublishPayload.bytesToStringAsString(payloadBytes);
+
+    //   if (topic == 'remedio/estado') {
+    //     final now = DateTime.now();
+    //     final delay = now.difference(_lastAlarmTime!).inSeconds;
+
+    //     try {
+    //       await _medSvc.updateStatus(_lastHistId!, delay);
+    //     } catch (e) {
+    //       debugPrint("❌ Erro no update status: $e");
+    //     }
+
+    //     _lastAlarmTime = null;
+    //   }
+    // });
   }
 
   void _startAlarmLoop() {
@@ -107,7 +125,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
 
       _lastAlarmTime = now;
 
-      if (_nextMed != null) _showAlarmPopup(_nextMed!);
+      // if (_nextMed != null) _showAlarmPopup(_nextMed!);
       return;
     }
   }
@@ -135,31 +153,71 @@ class _MedicationListPageState extends State<MedicationListPage> {
 
   Future<void> _getNextMedication() async {
     try {
-      _nextMedAlarm = await _medScheduleSvc.getUserNextMedication(null);
+      List<MedicationHistory>? nextMedAlarmResult;
+      print("_nextMedAlarm: $_nextMedAlarm");
+      print(
+        "Chamando getUserNextMedication com: ${_nextMedAlarm?.scheduled_at}",
+      );
+      _nextMedAlarm == null
+          ? nextMedAlarmResult = await _medScheduleSvc.getUserNextMedication(
+            _nextMedAlarm?.scheduled_at,
+          )
+          : nextMedAlarmResult = null;
 
-      if (_nextMedAlarm == null) {
-        _nextMed = null;
-        return;
-      }
+      print("nextMedAlarmResult: $nextMedAlarmResult");
 
-      final diff = DateTime.now().difference(_nextMedAlarm!.scheduled_at);
-
-      if (diff > const Duration(minutes: 15)) {
-        //Implementar lógica para avisar cuidador, se desejar
-        await _medScheduleSvc.updateMedicationStatus(
-          _nextMedAlarm!.id,
-          "Missed",
-          null,
+      if (nextMedAlarmResult != null && nextMedAlarmResult.isNotEmpty) {
+        print("Entrou no if do nextMedAlarmResult");
+        final meds = await _medSvc.getById(
+          nextMedAlarmResult.map((e) => e.medicationId).toList(),
         );
-        await _getNextMedication();
-        return;
+
+        print("meds: $meds");
+
+        if (meds == null || meds.isEmpty) {
+          throw Exception("Medicações não encontradas para o próximo alarme.");
+        }
+
+        final listMedNames = meds.map((e) => e.name).toList();
+
+        print("listMedNames: $listMedNames");
+
+        _nextMedAlarm = NextUserAlarm(
+          userId: nextMedAlarmResult[0].userId,
+          medicationAlarmDetails:
+              nextMedAlarmResult.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final e = entry.value;
+                return MedicationAlarmDetails(
+                  id: e.id,
+                  medicationId: e.medicationId,
+                  name: listMedNames[idx],
+                );
+              }).toList(),
+          scheduled_at: nextMedAlarmResult[0].scheduled_at,
+        );
+
+        print("_nextMedAlarm atualizado: $_nextMedAlarm");
       }
 
-      _nextMed = await _medSvc.getById(_nextMedAlarm!.medicationId);
+      if (_nextMedAlarm != null) {
+        final diff = DateTime.now().difference(_nextMedAlarm!.scheduled_at);
+
+        if (diff > const Duration(minutes: 15)) {
+          for (final medDetail in _nextMedAlarm!.medicationAlarmDetails) {
+            await _medScheduleSvc.updateMedicationStatus(
+              medDetail.id,
+              "Missed",
+              null,
+            );
+          }
+          _nextMedAlarm = null;
+          await _getNextMedication();
+        }
+      }
 
       if (mounted) {
         setState(() {
-          _nextMed = _nextMed;
           _nextMedAlarm = _nextMedAlarm;
         });
       }
@@ -211,7 +269,6 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Widget _buildNextMedicationCard(BuildContext context) {
-    final med = _nextMed;
     final alarm = _nextMedAlarm;
 
     return Card(
@@ -220,7 +277,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child:
-            med == null || alarm == null
+            alarm == null
                 ? const ListTile(
                   leading: Icon(Icons.schedule),
                   title: Text('PRÓXIMA MEDICAÇÃO'),
@@ -244,7 +301,9 @@ class _MedicationListPageState extends State<MedicationListPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            med.name,
+                            alarm.medicationAlarmDetails
+                                .map((d) => d.name)
+                                .join('\n'),
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -331,6 +390,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
                                       medication: m,
                                       onSave: (updated) async {
                                         await _medSvc.upsert(updated);
+                                        _nextMedAlarm = null;
                                         await _reload();
                                       },
                                     ),
@@ -522,6 +582,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
                                 (_) => MedicationFormPage(
                                   onSave: (newMed) async {
                                     await _saveNewMedication(newMed);
+                                    _nextMedAlarm = null;
                                     await _reload();
                                   },
                                 ),
