@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:medicine_box/models/medication_alarm_details.dart';
 
 import 'package:medicine_box/models/medication_history.dart';
+import 'package:medicine_box/models/next_user_alarm.dart';
 import 'package:medicine_box/models/profile_model.dart';
 import 'package:medicine_box/services/medication_schedule_service.dart';
 import 'package:medicine_box/services/profile_service.dart';
@@ -33,8 +35,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
   final _mqtt = MqttService();
 
   List<Medication> _meds = [];
-  Medication? _nextMed;
-  MedicationHistory? _nextMedAlarm;
+  NextUserAlarm? _nextMedAlarm;
   Profile? _userProfile;
   bool _loadingMqtt = true;
   bool _loading = true;
@@ -51,30 +52,50 @@ class _MedicationListPageState extends State<MedicationListPage> {
   Future<void> _init() async {
     if (mounted) setState(() => _loadingMqtt = true);
 
-    _mqtt.connect().then((result) {
-      if (mounted) {
-        setState(() {
-          _loadingMqtt = false;
-          _isConnectionSuccessful = result;
+    _mqtt
+        .connect()
+        .then((result) {
+          if (mounted) {
+            setState(() {
+              _loadingMqtt = false;
+              _isConnectionSuccessful = result;
+            });
+          }
+          _listenMqtt();
+        })
+        .catchError((e) {
+          if (mounted) {
+            setState(() {
+              _loadingMqtt = false;
+              _isConnectionSuccessful = false;
+            });
+          }
         });
-      }
-      _listenMqtt();
-    }).catchError((e) {
-      if (mounted) {
-        setState(() {
-          _loadingMqtt = false;
-          _isConnectionSuccessful = false;
-        });
-      }
-    });
 
     await _reload();
     _startAlarmLoop();
   }
 
   void _listenMqtt() {
-    // Caso volte a usar o listener, mantenha aqui.
-    // Exemplo comentado no seu código original.
+    // _mqtt.client.updates!.listen((events) async {
+    //   final recMess = events[0].payload as MqttPublishMessage;
+    //   final topic = events[0].topic;
+    //   final payloadBytes = recMess.payload.message;
+    //   final msg = MqttPublishPayload.bytesToStringAsString(payloadBytes);
+
+    //   if (topic == 'remedio/estado') {
+    //     final now = DateTime.now();
+    //     final delay = now.difference(_lastAlarmTime!).inSeconds;
+
+    //     try {
+    //       await _medSvc.updateStatus(_lastHistId!, delay);
+    //     } catch (e) {
+    //       debugPrint("❌ Erro no update status: $e");
+    //     }
+
+    //     _lastAlarmTime = null;
+    //   }
+    // });
   }
 
   void _startAlarmLoop() {
@@ -104,7 +125,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
 
       _lastAlarmTime = now;
 
-      if (_nextMed != null) _showAlarmPopup(_nextMed!);
+      // if (_nextMed != null) _showAlarmPopup(_nextMed!);
       return;
     }
   }
@@ -114,48 +135,89 @@ class _MedicationListPageState extends State<MedicationListPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        title: const Text('Alarme de Medicação'),
-        content: Text(
-          'Remédio: ${med.name}\nHorário: ${TimeOfDay.fromDateTime(now).format(context)}',
-        ),
-        actions: [
-          ElevatedButton(
-            child: const Text('Parar'),
-            onPressed: () => Navigator.pop(context),
+      builder:
+          (_) => AlertDialog(
+            title: const Text('Alarme de Medicação'),
+            content: Text(
+              'Remédio: ${med.name}\nHorário: ${TimeOfDay.fromDateTime(now).format(context)}',
+            ),
+            actions: [
+              ElevatedButton(
+                child: const Text('Parar'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   Future<void> _getNextMedication() async {
     try {
-      _nextMedAlarm = await _medScheduleSvc.getUserNextMedication(null);
+      List<MedicationHistory>? nextMedAlarmResult;
+      print("_nextMedAlarm: $_nextMedAlarm");
+      print(
+        "Chamando getUserNextMedication com: ${_nextMedAlarm?.scheduled_at}",
+      );
+      _nextMedAlarm == null
+          ? nextMedAlarmResult = await _medScheduleSvc.getUserNextMedication(
+            _nextMedAlarm?.scheduled_at,
+          )
+          : nextMedAlarmResult = null;
 
-      if (_nextMedAlarm == null) {
-        _nextMed = null;
-        return;
-      }
+      print("nextMedAlarmResult: $nextMedAlarmResult");
 
-      final diff = DateTime.now().difference(_nextMedAlarm!.scheduled_at);
-
-      if (diff > const Duration(minutes: 15)) {
-        //Implementar lógica para avisar cuidador, se desejar
-        await _medScheduleSvc.updateMedicationStatus(
-          _nextMedAlarm!.id,
-          "Missed",
-          null,
+      if (nextMedAlarmResult != null && nextMedAlarmResult.isNotEmpty) {
+        print("Entrou no if do nextMedAlarmResult");
+        final meds = await _medSvc.getById(
+          nextMedAlarmResult.map((e) => e.medicationId).toList(),
         );
-        await _getNextMedication();
-        return;
+
+        print("meds: $meds");
+
+        if (meds == null || meds.isEmpty) {
+          throw Exception("Medicações não encontradas para o próximo alarme.");
+        }
+
+        final listMedNames = meds.map((e) => e.name).toList();
+
+        print("listMedNames: $listMedNames");
+
+        _nextMedAlarm = NextUserAlarm(
+          userId: nextMedAlarmResult[0].userId,
+          medicationAlarmDetails:
+              nextMedAlarmResult.asMap().entries.map((entry) {
+                final idx = entry.key;
+                final e = entry.value;
+                return MedicationAlarmDetails(
+                  id: e.id,
+                  medicationId: e.medicationId,
+                  name: listMedNames[idx],
+                );
+              }).toList(),
+          scheduled_at: nextMedAlarmResult[0].scheduled_at,
+        );
+
+        print("_nextMedAlarm atualizado: $_nextMedAlarm");
       }
 
-      _nextMed = await _medSvc.getById(_nextMedAlarm!.medicationId);
+      if (_nextMedAlarm != null) {
+        final diff = DateTime.now().difference(_nextMedAlarm!.scheduled_at);
+
+        if (diff > const Duration(minutes: 15)) {
+          for (final medDetail in _nextMedAlarm!.medicationAlarmDetails) {
+            await _medScheduleSvc.updateMedicationStatus(
+              medDetail.id,
+              "Missed",
+              null,
+            );
+          }
+          _nextMedAlarm = null;
+          await _getNextMedication();
+        }
+      }
 
       if (mounted) {
         setState(() {
-          _nextMed = _nextMed;
           _nextMedAlarm = _nextMedAlarm;
         });
       }
@@ -180,51 +242,6 @@ class _MedicationListPageState extends State<MedicationListPage> {
   Future<void> _saveNewMedication(Medication newMed) async {
     final medResult = await _medSvc.upsert(newMed);
 
-    if (medResult.errorMessage != null &&
-        medResult.errorMessage!.startsWith("Horário indisponível")) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Erro ao agendar a medicação'),
-            content: Text(medResult.errorMessage!),
-            actions: [
-              ElevatedButton(
-                child: const Text('NÃO'),
-                onPressed: () => Navigator.pop(context),
-              ),
-              ElevatedButton(
-                child: const Text('SIM'),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _updateMedication(newMed, medResult.errorMessage!);
-                },
-              ),
-            ],
-          ),
-        );
-      }
-    } else if (medResult.hasError || medResult.data == null) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            title: const Text('Erro ao agendar a medicação'),
-            content: Text(
-              medResult.errorMessage ??
-                  'Não foi possível agendar esta medicação nesse horário.',
-            ),
-            actions: [
-              ElevatedButton(
-                child: const Text('OK'),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-        );
-      }
-    }
-
     final med = medResult.data!;
 
     await _medScheduleSvc.upsertMedicationSchedule(
@@ -236,25 +253,6 @@ class _MedicationListPageState extends State<MedicationListPage> {
     );
 
     await _reload();
-  }
-
-  Future<void> _updateMedication(Medication newMed, String message) async {
-    final regex = RegExp(r'\d{1,2}:\d{1,2}:\d{1,2}');
-    final matches = regex.allMatches(message).toList();
-
-    final time1 = matches.isNotEmpty ? matches[0].group(0) : null;
-    final time2 = matches.length > 1 ? matches[1].group(0) : null;
-
-    if (time1 == null || time2 == null) {
-      debugPrint("Erro ao extrair os horários da mensagem: $message");
-      return;
-    }
-
-    final timeIndex = newMed.schedules.indexOf(time1);
-    if (timeIndex != -1) {
-      newMed.schedules[timeIndex] = time2;
-      await _saveNewMedication(newMed);
-    }
   }
 
   @override
@@ -271,7 +269,6 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Widget _buildNextMedicationCard(BuildContext context) {
-    final med = _nextMed;
     final alarm = _nextMedAlarm;
 
     return Card(
@@ -279,52 +276,55 @@ class _MedicationListPageState extends State<MedicationListPage> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: med == null || alarm == null
-            ? const ListTile(
-                leading: Icon(Icons.schedule),
-                title: Text('PRÓXIMA MEDICAÇÃO'),
-                subtitle: Text('Nenhuma medicação próxima.'),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'PRÓXIMA MEDICAÇÃO',
-                    style: TextStyle(
-                      fontSize: 12,
-                      letterSpacing: 1,
-                      fontWeight: FontWeight.w600,
+        child:
+            alarm == null
+                ? const ListTile(
+                  leading: Icon(Icons.schedule),
+                  title: Text('PRÓXIMA MEDICAÇÃO'),
+                  subtitle: Text('Nenhuma medicação próxima.'),
+                )
+                : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'PRÓXIMA MEDICAÇÃO',
+                      style: TextStyle(
+                        fontSize: 12,
+                        letterSpacing: 1,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.medication, size: 20),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          med.name,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.medication, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            alarm.medicationAlarmDetails
+                                .map((d) => d.name)
+                                .join('\n'),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time, size: 18),
-                      const SizedBox(width: 6),
-                      Text(
-                        _formatDateTime(alarm.scheduled_at),
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          _formatDateTime(alarm.scheduled_at),
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
       ),
     );
   }
@@ -333,106 +333,113 @@ class _MedicationListPageState extends State<MedicationListPage> {
     return _meds.isEmpty
         ? const Center(child: Text('Nenhuma medicação cadastrada.'))
         : ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: _meds.length,
-            itemBuilder: (_, i) {
-              final m = _meds[i];
-              return Card(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                elevation: 3,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        m.name,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+          padding: const EdgeInsets.all(12),
+          itemCount: _meds.length,
+          itemBuilder: (_, i) {
+            final m = _meds[i];
+            return Card(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              elevation: 3,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      m.name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        children: m.days.map((d) => Chip(label: Text(d))).toList(),
-                      ),
-                      const SizedBox(height: 4),
-                      Wrap(
-                        spacing: 6,
-                        children:
-                            m.schedules.map((s) => Chip(label: Text(s))).toList(),
-                      ),
-                      if (m.startDate != null || m.endDate != null) ...[
-                        const SizedBox(height: 10),
-                        Text(
-                          'Período: ${m.startDate != null ? "${m.startDate!.day}/${m.startDate!.month}" : "..."} '
-                          'até ${m.endDate != null ? "${m.endDate!.day}/${m.endDate!.month}" : "..."}',
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      children:
+                          m.days.map((d) => Chip(label: Text(d))).toList(),
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      children:
+                          m.schedules.map((s) => Chip(label: Text(s))).toList(),
+                    ),
+                    if (m.startDate != null || m.endDate != null) ...[
                       const SizedBox(height: 10),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit),
-                            onPressed: () async {
-                              await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => MedicationFormPage(
-                                    medication: m,
-                                    onSave: (updated) async {
-                                      await _medSvc.upsert(updated);
-                                      await _reload();
-                                    },
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.redAccent),
-                            onPressed: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: const Text('Confirmar exclusão'),
-                                  content: const Text(
-                                    'Deseja realmente excluir esta medicação?',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text('Cancelar'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text('Excluir'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (confirm == true) {
-                                await _medSvc.delete(m.id!);
-                                await _reload();
-                              }
-                            },
-                          ),
-                        ],
+                      Text(
+                        'Período: ${m.startDate != null ? "${m.startDate!.day}/${m.startDate!.month}" : "..."} '
+                        'até ${m.endDate != null ? "${m.endDate!.day}/${m.endDate!.month}" : "..."}',
+                        style: const TextStyle(fontSize: 14),
                       ),
                     ],
-                  ),
+                    const SizedBox(height: 10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit),
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (_) => MedicationFormPage(
+                                      medication: m,
+                                      onSave: (updated) async {
+                                        await _medSvc.upsert(updated);
+                                        _nextMedAlarm = null;
+                                        await _reload();
+                                      },
+                                    ),
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete,
+                            color: Colors.redAccent,
+                          ),
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder:
+                                  (_) => AlertDialog(
+                                    title: const Text('Confirmar exclusão'),
+                                    content: const Text(
+                                      'Deseja realmente excluir esta medicação?',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed:
+                                            () => Navigator.pop(context, false),
+                                        child: const Text('Cancelar'),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed:
+                                            () => Navigator.pop(context, true),
+                                        child: const Text('Excluir'),
+                                      ),
+                                    ],
+                                  ),
+                            );
+                            if (confirm == true) {
+                              await _medSvc.delete(m.id!);
+                              await _reload();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              );
-            },
-          );
+              ),
+            );
+          },
+        );
   }
 
   Future<void> _handleMenu(_MenuAction action) async {
@@ -446,12 +453,13 @@ class _MedicationListPageState extends State<MedicationListPage> {
         break;
       case _MenuAction.logout:
         try {
-          await AuthService().signOut(); // ou Supabase.instance.client.auth.signOut()
+          await AuthService()
+              .signOut(); // ou Supabase.instance.client.auth.signOut()
         } catch (e) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro ao sair: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Erro ao sair: $e')));
         } finally {
           if (!mounted) return;
           Navigator.of(context).pushAndRemoveUntil(
@@ -466,9 +474,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -483,24 +489,25 @@ class _MedicationListPageState extends State<MedicationListPage> {
         actions: [
           PopupMenuButton<_MenuAction>(
             onSelected: _handleMenu,
-            itemBuilder: (ctx) => const [
-              PopupMenuItem(
-                value: _MenuAction.profile,
-                child: ListTile(
-                  leading: Icon(Icons.person),
-                  title: Text('Perfil'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: _MenuAction.logout,
-                child: ListTile(
-                  leading: Icon(Icons.logout),
-                  title: Text('Sair'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
+            itemBuilder:
+                (ctx) => const [
+                  PopupMenuItem(
+                    value: _MenuAction.profile,
+                    child: ListTile(
+                      leading: Icon(Icons.person),
+                      title: Text('Perfil'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: _MenuAction.logout,
+                    child: ListTile(
+                      leading: Icon(Icons.logout),
+                      title: Text('Sair'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
           ),
         ],
       ),
@@ -517,24 +524,23 @@ class _MedicationListPageState extends State<MedicationListPage> {
                     _loadingMqtt
                         ? const Icon(Icons.sync, color: Colors.orange)
                         : _isConnectionSuccessful
-                            ? const Icon(Icons.check_circle, color: Colors.green)
-                            : const Icon(Icons.close, color: Colors.red),
+                        ? const Icon(Icons.check_circle, color: Colors.green)
+                        : const Icon(Icons.close, color: Colors.red),
                     const SizedBox(width: 6),
                     _loadingMqtt
                         ? const Text(
-                            "Conectando...",
-                            style: TextStyle(fontSize: 12, color: Colors.orange),
-                          )
+                          "Conectando...",
+                          style: TextStyle(fontSize: 12, color: Colors.orange),
+                        )
                         : _isConnectionSuccessful
-                            ? const Text(
-                                "Conectado",
-                                style:
-                                    TextStyle(fontSize: 12, color: Colors.green),
-                              )
-                            : const Text(
-                                "Falha na conexão",
-                                style: TextStyle(fontSize: 12, color: Colors.red),
-                              ),
+                        ? const Text(
+                          "Conectado",
+                          style: TextStyle(fontSize: 12, color: Colors.green),
+                        )
+                        : const Text(
+                          "Falha na conexão",
+                          style: TextStyle(fontSize: 12, color: Colors.red),
+                        ),
                   ],
                 ),
                 Row(
@@ -542,29 +548,29 @@ class _MedicationListPageState extends State<MedicationListPage> {
                     _userProfile?.caregiverId == null ||
                             _userProfile!.caregiverId!.isEmpty
                         ? IconButton(
-                            icon: const Icon(Icons.person_add),
-                            tooltip: "Adicionar cuidador",
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const InviteCaregiverPage(),
-                                ),
-                              );
-                            },
-                          )
+                          icon: const Icon(Icons.person_add),
+                          tooltip: "Adicionar cuidador",
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const InviteCaregiverPage(),
+                              ),
+                            );
+                          },
+                        )
                         : IconButton(
-                            icon: const Icon(Icons.person),
-                            tooltip: "Ver cuidador",
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const InviteCaregiverPage(),
-                                ),
-                              );
-                            },
-                          ),
+                          icon: const Icon(Icons.person),
+                          tooltip: "Ver cuidador",
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const InviteCaregiverPage(),
+                              ),
+                            );
+                          },
+                        ),
                     IconButton(
                       icon: const Icon(Icons.add),
                       tooltip: 'Adicionar Medicação',
@@ -572,12 +578,14 @@ class _MedicationListPageState extends State<MedicationListPage> {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => MedicationFormPage(
-                              onSave: (newMed) async {
-                                await _saveNewMedication(newMed);
-                                await _reload();
-                              },
-                            ),
+                            builder:
+                                (_) => MedicationFormPage(
+                                  onSave: (newMed) async {
+                                    await _saveNewMedication(newMed);
+                                    _nextMedAlarm = null;
+                                    await _reload();
+                                  },
+                                ),
                           ),
                         );
                       },
@@ -592,7 +600,9 @@ class _MedicationListPageState extends State<MedicationListPage> {
               padding: const EdgeInsets.all(12),
               child: Column(
                 children: [
-                  _meds.isEmpty ? Container() : _buildNextMedicationCard(context),
+                  _meds.isEmpty
+                      ? Container()
+                      : _buildNextMedicationCard(context),
                   const SizedBox(height: 8),
                   Expanded(child: _buildMedicationListBody(context)),
                 ],
