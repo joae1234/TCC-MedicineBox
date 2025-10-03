@@ -3,6 +3,8 @@ import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../models/profile_model.dart';
 import 'medication_list_page.dart';
+import 'caregiver_dashboard_page.dart';
+import 'sign_in_page.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 
@@ -18,14 +20,18 @@ class _SignUpPageState extends State<SignUpPage> {
   final _confirmCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+
   final _phoneFormatter = MaskTextInputFormatter(
     mask: '(##) #####-####',
     filter: {"#": RegExp(r'[0-9]')},
     type: MaskAutoCompletionType.lazy,
   );
-  final _roles_list = ['patient', 'caregiver'];
+
+  final _rolesList = ['patient', 'caregiver'];
   String _roleCtrl = '';
   bool _loading = false;
+  bool _obscurePass = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
@@ -35,7 +41,6 @@ class _SignUpPageState extends State<SignUpPage> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     super.dispose();
-    _roleCtrl = '';
   }
 
   Future<void> _doSignUp() async {
@@ -46,27 +51,57 @@ class _SignUpPageState extends State<SignUpPage> {
     final phoneNumber = _phoneFormatter.getUnmaskedText();
     final role = _roleCtrl;
 
-    if (email.isEmpty || pass.isEmpty || fullName.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Preencha todos os campos')));
+    if (fullName.isEmpty ||
+        email.isEmpty ||
+        pass.isEmpty ||
+        confirm.isEmpty ||
+        role.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Preencha todos os campos e selecione um perfil.')),
+      );
+      return;
+    }
+    if (pass.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('A senha deve ter pelo menos 6 caracteres.')),
+      );
       return;
     }
     if (pass != confirm) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Senhas não conferem')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Senhas não conferem.')),
+      );
       return;
     }
 
     setState(() => _loading = true);
     try {
+      // cria conta no Supabase
       await AuthService().signUp(email, pass);
-      final user = AuthService().currentUser!;
+
+      // dependendo da config (email confirmation), user pode ser nulo
+      final user = AuthService().currentUser;
+      if (user == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Conta criada! Verifique seu e-mail para confirmar.'),
+          ),
+        );
+        // Leva para login
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const SignInPage()),
+          (_) => false,
+        );
+        return;
+      }
+
+      // cria/atualiza perfil
       await ProfileService().upsertProfile(
         Profile(
           id: user.id,
-          email: user.email!,
+          email: user.email ?? email,
           fullName: fullName,
           role: role,
           phoneNumber: phoneNumber,
@@ -74,17 +109,29 @@ class _SignUpPageState extends State<SignUpPage> {
         ),
       );
 
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const MedicationListPage()),
-        (_) => false,
-      );
+      if (!mounted) return;
+
+      // redireciona conforme a role
+      if (role == 'caregiver') {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const CaregiverDashboardPage()),
+          (_) => false,
+        );
+      } else {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const MedicationListPage()),
+          (_) => false,
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao cadastrar: $e')));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao cadastrar: $e')),
+      );
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -107,6 +154,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 const SizedBox(height: 24),
                 TextField(
                   controller: _nameCtrl,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Nome completo',
                     prefixIcon: Icon(Icons.person),
@@ -117,6 +165,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 TextField(
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email),
@@ -128,6 +177,7 @@ class _SignUpPageState extends State<SignUpPage> {
                   controller: _phoneCtrl,
                   keyboardType: TextInputType.phone,
                   inputFormatters: [_phoneFormatter],
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Telefone',
                     prefixIcon: Icon(Icons.phone),
@@ -146,57 +196,63 @@ class _SignUpPageState extends State<SignUpPage> {
                     'Selecione um perfil',
                     style: TextStyle(fontSize: 14),
                   ),
-                  items:
-                      _roles_list.map((role) {
-                        return DropdownMenuItem<String>(
-                          value: role,
-                          child: Text(
-                            role[0].toUpperCase() + role.substring(1),
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                        );
-                      }).toList(),
+                  items: _rolesList.map((role) {
+                    return DropdownMenuItem<String>(
+                      value: role,
+                      child: Text(
+                        role[0].toUpperCase() + role.substring(1),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    );
+                  }).toList(),
                   value: _roleCtrl.isEmpty ? null : _roleCtrl,
                   onChanged: (value) {
-                    setState(() {
-                      _roleCtrl = value!;
-                    });
+                    setState(() => _roleCtrl = value ?? '');
                   },
                   dropdownStyleData: DropdownStyleData(
-                    maxHeight: 200, // altura máxima do menu
+                    maxHeight: 200,
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _passCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscurePass,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
                     labelText: 'Senha',
-                    prefixIcon: Icon(Icons.lock),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscurePass ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _confirmCtrl,
-                  obscureText: true,
-                  decoration: const InputDecoration(
+                  obscureText: _obscureConfirm,
+                  decoration: InputDecoration(
                     labelText: 'Confirmar senha',
-                    prefixIcon: Icon(Icons.lock_outline),
-                    border: OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
                 _loading
                     ? const CircularProgressIndicator()
                     : ElevatedButton.icon(
-                      icon: const Icon(Icons.check),
-                      label: const Text('Cadastrar'),
-                      onPressed: _doSignUp,
-                      style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(double.infinity, 50),
+                        icon: const Icon(Icons.check),
+                        label: const Text('Cadastrar'),
+                        onPressed: _doSignUp,
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
+                        ),
                       ),
-                    ),
               ],
             ),
           ),

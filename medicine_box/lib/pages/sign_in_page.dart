@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import 'medication_list_page.dart';
 import 'sign_up_page.dart';
+import '../services/profile_service.dart';
+import 'caregiver_dashboard_page.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -25,15 +27,29 @@ class _SignInPageState extends State<SignInPage> {
     setState(() => _loading = true);
     try {
       await AuthService().signIn(_email.text.trim(), _pass.text);
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MedicationListPage()),
-      );
+
+      // pega o perfil do usuário logado
+      final profile = await ProfileService().getOwnProfile();
+
+      if (!mounted) return;
+
+      if (profile.role == 'caregiver') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const CaregiverDashboardPage()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MedicationListPage()),
+        );
+      }
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Erro ao logar: $e')));
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 

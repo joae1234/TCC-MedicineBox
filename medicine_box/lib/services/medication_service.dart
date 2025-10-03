@@ -1,5 +1,6 @@
 import 'package:medicine_box/models/base_request_result.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../models/medication.dart';
 import '../models/medication_history.dart';
 
@@ -64,27 +65,48 @@ class MedicationService {
 
     final payload = med.toMap()..['user_id'] = user.id;
 
-    // for (final sched in med.schedules) {
-    //   final scheduleAvailable = await isScheduleAvaiable(sched);
-
-    //   if (scheduleAvailable != null) {
-    //     return BaseRequestResult.failure(
-    //       "Horário indisponível. Gostaria de alterar o horário  $sched para $scheduleAvailable?",
-    //     );
-    //   }
-    // }
-
     final result =
         await _db.from('medications').upsert(payload).select().single();
-    print("remedio criado: $result");
+    // print("remedio criado: $result");
 
     return BaseRequestResult.success(Medication.fromMap(result));
   }
 
-  /// Remove uma medicação
+  /// Remove uma medicação do banco.
+  /// - Se a FK de `medication_history.medication_id` tiver `ON DELETE CASCADE`,
+  ///   apenas o delete em `medications` já apaga o histórico.
+  /// - Se NÃO tiver CASCADE, tentamos apagar o histórico do usuário primeiro
+  ///   (para evitar erro de chave estrangeira) e depois a medicação.
   Future<void> delete(String id) async {
-    //TO DO: adicionar soft delete
-    // await _db.from('medications').delete().eq('id', id);
+    final user = _db.auth.currentUser;
+    if (user == null) throw Exception('Usuário não autenticado');
+
+    try {
+      // Tenta apagar diretamente (ideal com ON DELETE CASCADE)
+      await _db
+          .from('medications')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('id', id);
+    } on PostgrestException catch (e) {
+      // 23503 = foreign_key_violation
+      if (e.code == '23503') {
+        // Sem CASCADE: apaga histórico do usuário dessa medicação e tenta de novo
+        await _db
+            .from('medication_history')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('medication_id', id);
+
+        await _db
+            .from('medications')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('id', id);
+      } else {
+        rethrow;
+      }
+    }
   }
 
   /// Salva evento antes da tomada do remédio (pré-alarme)
@@ -96,6 +118,7 @@ class MedicationService {
     final user = _db.auth.currentUser;
     if (user == null) throw Exception('Usuário não autenticado');
 
+    // Se quiser usar, descomente:
     // await _db.from('medication_history').insert({
     //   'id': id,
     //   'user_id': user.id,
@@ -108,23 +131,14 @@ class MedicationService {
 
   /// Atualiza o status de um histórico (chamado quando a medicação é detectada via sensor)
   Future<void> updateStatus(String id, int delaySecs) async {
-    print('🔄 Tentando atualizar o histórico com ID: $id');
-
     final existing = await _db.from('medication_history').select().eq('id', id);
+    if (existing.isEmpty) return;
 
-    if (existing.isEmpty) {
-      print('❌ Nenhum histórico encontrado com ID: $id');
-      return;
-    }
-
-    final updated =
-        await _db
-            .from('medication_history')
-            .update({'status': 'Tomado', 'delay_secs': delaySecs})
-            .eq('id', id)
-            .select();
-
-    print('✅ Histórico atualizado: $updated');
+    await _db
+        .from('medication_history')
+        .update({'status': 'Tomado', 'delay_secs': delaySecs})
+        .eq('id', id)
+        .select();
   }
 
   /// Busca o histórico completo das medicações
