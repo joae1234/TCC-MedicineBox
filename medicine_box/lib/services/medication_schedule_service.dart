@@ -90,7 +90,7 @@ class MedicationScheduleService {
         throw Exception('Usuário não autenticado.');
       }
 
-      log.t(
+      log.i(
         "[MSS] - Procurando medicamentos agendados para o usuário: ${user.id}",
       );
       var query = _db
@@ -100,7 +100,7 @@ class MedicationScheduleService {
           .eq('status', 'Scheduled');
 
       if (time != null) {
-        log.t(
+        log.i(
           "[MSS] - Procurando medicamentos agendados para esse horário: ${time.toIso8601String()}",
         );
         query = query.eq('scheduled_at', time.toIso8601String());
@@ -108,7 +108,7 @@ class MedicationScheduleService {
 
       final response = await query.order('scheduled_at', ascending: true);
 
-      log.t("[MSS] - Response do getUserNextMedication: $response");
+      // log.d("[MSS] - Response do getUserNextMedication: $response");
 
       if (response == null) {
         log.w(
@@ -145,7 +145,7 @@ class MedicationScheduleService {
     DateTime? takenAt,
   ) async {
     try {
-      log.t('[MSS] - Atualizando status da medicação $id para $status');
+      log.i('[MSS] - Atualizando status da medicação $id para $status');
       await _db
           .from('medication_history')
           .update({
@@ -169,7 +169,7 @@ class UserHistoryResult {
 extension MedicationScheduleServiceHistory on MedicationScheduleService {
   Future<UserHistoryResult> getUserHistoryWithMedNames(String userId) async {
     try {
-      log.t(
+      log.i(
         '[MSS] - Procurando histórico de medicamentos para o usuário: $userId',
       );
       final histRes = await _db

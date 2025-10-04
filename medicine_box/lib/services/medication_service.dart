@@ -16,10 +16,10 @@ class MedicationService {
         throw Exception('Usuário não autenticado');
       }
 
-      log.t('[MS] - Buscando medicações por ID: $id');
+      log.i('[MS] - Buscando medicações por ID: $id');
       final response = await _db.from('medications').select().in_('id', id);
 
-      log.t('[MS] - Resultado da busca por medicações: $response');
+      // log.d('[MS] - Resultado da busca por medicações: $response');
       if (response == null) return null;
 
       final result =
@@ -27,7 +27,7 @@ class MedicationService {
               .map((item) => Medication.fromMap(item as Map<String, dynamic>))
               .toList();
 
-      log.t('[MS] - Medicações retornadas para o usuário ${user.id}: $result');
+      // log.d('[MS] - Medicações retornadas para o usuário ${user.id}: $result');
       return result;
     } catch (e) {
       log.e('[MS] - Erro ao buscar medicações por ID', error: e);
@@ -43,14 +43,14 @@ class MedicationService {
       throw Exception('Usuário não autenticado');
     }
 
-    log.t('[MS] - Buscando todas as medicações para o usuário: ${user.id}');
+    log.i('[MS] - Buscando todas as medicações para o usuário: ${user.id}');
     final rows = await _db
         .from('medications')
         .select<List<Map<String, dynamic>>>()
         .eq('user_id', user.id)
         .order('created_at');
 
-    log.t('[MS] - Medicações retornadas para o usuário ${user.id}: $rows');
+    // log.d('[MS] - Medicações retornadas para o usuário ${user.id}: $rows');
     return rows.map(Medication.fromMap).toList();
   }
 
@@ -62,7 +62,7 @@ class MedicationService {
         log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
         throw Exception('Usuário não autenticado');
       }
-      log.t('[MS] - Buscando medicações ativas para o usuário: ${user.id}');
+      log.i('[MS] - Buscando medicações ativas para o usuário: ${user.id}');
 
       final now = DateTime.now().toUtc();
 
@@ -74,9 +74,9 @@ class MedicationService {
           .or('end_date.gte.${now.toIso8601String()},end_date.is.null')
           .order('created_at');
 
-      log.t(
-        '[MS] - Medicações ativas retornadas para o usuário ${user.id}: $rows',
-      );
+      // log.d(
+      //   '[MS] - Medicações ativas retornadas para o usuário ${user.id}: $rows',
+      // );
       return rows.map(Medication.fromMap).toList();
     } catch (e) {
       log.e('[MS] - Erro ao buscar medicações ativas', error: e);
@@ -92,7 +92,7 @@ class MedicationService {
         log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
         throw Exception('Usuário não autenticado');
       }
-      log.t(
+      log.i(
         '[MS] - Criando ou atualizando medicação $med para o usuário: ${user.id}',
       );
 
@@ -101,7 +101,7 @@ class MedicationService {
       final result =
           await _db.from('medications').upsert(payload).select().single();
       // print("remedio criado: $result");
-      log.t('[MS] - Resultado da operação de atualização: $result');
+      // log.d('[MS] - Resultado da operação de atualização: $result');
       return BaseRequestResult.success(Medication.fromMap(result));
     } catch (e) {
       log.e('[MS] - Erro ao criar ou atualizar medicação', error: e);

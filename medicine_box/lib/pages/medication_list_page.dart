@@ -1,21 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:logger/logger.dart';
 import 'package:medicine_box/models/medication_alarm_details.dart';
-
 import 'package:medicine_box/models/medication_history.dart';
 import 'package:medicine_box/models/next_user_alarm.dart';
 import 'package:medicine_box/models/profile_model.dart';
 import 'package:medicine_box/services/medication_schedule_service.dart';
 import 'package:medicine_box/services/profile_service.dart';
-
 import '../models/medication.dart';
 import '../services/medication_service.dart';
 import '../services/mqtt_service.dart';
-
 import 'medication_form_page.dart';
 import 'invite_caregiver_page.dart';
-
-// ⬇️ novos imports para Perfil/Logout
 import '../services/auth_service.dart';
 import 'sign_in_page.dart';
 import 'profile_page.dart';
@@ -33,6 +29,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
   final _profileSvc = ProfileService();
   final _medScheduleSvc = MedicationScheduleService();
   final _mqtt = MqttService();
+  final _log = Logger();
 
   List<Medication> _meds = [];
   NextUserAlarm? _nextMedAlarm;
@@ -50,8 +47,10 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Future<void> _init() async {
+    _log.i("[MLP] - Incializando a main page de medicações");
     if (mounted) setState(() => _loadingMqtt = true);
 
+    _log.i("[MLP] - Incializando conexão com o MQTT...");
     _mqtt
         .connect()
         .then((result) {
@@ -154,7 +153,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
   Future<void> _getNextMedication() async {
     try {
       List<MedicationHistory>? nextMedAlarmResult;
-      print("_nextMedAlarm: $_nextMedAlarm");
+      _log.i("_nextMedAlarm: $_nextMedAlarm");
       print(
         "Chamando getUserNextMedication com: ${_nextMedAlarm?.scheduled_at}",
       );
@@ -227,8 +226,10 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Future<void> _reload() async {
+    _log.i("[MLP] - Carregando a página de medicações");
     if (mounted) setState(() => _loading = true);
 
+    _log.i("[MLP] - Buscando detalhes do usuário logado");
     _userProfile = await _profileSvc.getOwnProfile();
 
     final meds = await _medSvc.getActiveMeds();
