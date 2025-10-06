@@ -1,37 +1,56 @@
+import 'package:logger/logger.dart';
 import 'package:medicine_box/models/base_request_result.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/medication.dart';
 import '../models/medication_history.dart';
-import 'package:logger/logger.dart';
 
 class MedicationService {
   final SupabaseClient _db = Supabase.instance.client;
-  final log = Logger();
+  final _log = Logger();
 
   Future<List<Medication>?> getById(List<String> id) async {
+    Stopwatch stopWatch = Stopwatch();
+    stopWatch.start();
     try {
+      _log.i("[MS] - Iniciando busca por medicações por uma lista de IDs $id");
       final user = _db.auth.currentUser;
       if (user == null) {
-        log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
+        _log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
         throw Exception('Usuário não autenticado');
       }
 
-      log.t('[MS] - Buscando medicações por ID: $id');
       final response = await _db.from('medications').select().in_('id', id);
 
-      log.t('[MS] - Resultado da busca por medicações: $response');
-      if (response == null) return null;
+      // _log.d('[MS] - Resultado da busca por medicações: $response');
+      if (response == null) {
+        _log.w(
+          "[MS] - Nenhuma medicação foi encontrada para os IDs fornecidos",
+        );
+        stopWatch.stop();
+        _log.i(
+          '[MS] - Busca por medicações por ID finalizada em ${stopWatch.elapsedMilliseconds} ms',
+        );
+        return null;
+      }
 
       final result =
           (response as List)
               .map((item) => Medication.fromMap(item as Map<String, dynamic>))
               .toList();
 
-      log.t('[MS] - Medicações retornadas para o usuário ${user.id}: $result');
+      // _log.d('[MS] - Medicações retornadas para o usuário ${user.id}: $result');
+      stopWatch.stop();
+      _log.i(
+        '[MS] - Busca por medicações por ID finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
       return result;
     } catch (e) {
-      log.e('[MS] - Erro ao buscar medicações por ID', error: e);
-      throw Exception('Erro ao buscar medicações por ID: $e');
+      _log.e('[MS] - Erro ao buscar medicações por ID', error: e);
+      stopWatch.stop();
+      _log.i(
+        '[MS] - Busca por medicações por ID finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
+      throw Exception('Erro ao buscar medicações por ID');
     }
   }
 
@@ -39,30 +58,32 @@ class MedicationService {
   Future<List<Medication>> getAll() async {
     final user = _db.auth.currentUser;
     if (user == null) {
-      log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
+      _log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
       throw Exception('Usuário não autenticado');
     }
 
-    log.t('[MS] - Buscando todas as medicações para o usuário: ${user.id}');
+    _log.i('[MS] - Buscando todas as medicações para o usuário: ${user.id}');
     final rows = await _db
         .from('medications')
         .select<List<Map<String, dynamic>>>()
         .eq('user_id', user.id)
         .order('created_at');
 
-    log.t('[MS] - Medicações retornadas para o usuário ${user.id}: $rows');
+    // _log.d('[MS] - Medicações retornadas para o usuário ${user.id}: $rows');
     return rows.map(Medication.fromMap).toList();
   }
 
   /// Carrega todas as medicações ativas do usuário autenticado
   Future<List<Medication>> getActiveMeds() async {
+    Stopwatch stopWatch = Stopwatch();
+    stopWatch.start();
     try {
+      _log.i('[MS] - Iniciando busca por medicações ativas para o usuário');
       final user = _db.auth.currentUser;
       if (user == null) {
-        log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
+        _log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
         throw Exception('Usuário não autenticado');
       }
-      log.t('[MS] - Buscando medicações ativas para o usuário: ${user.id}');
 
       final now = DateTime.now().toUtc();
 
@@ -74,12 +95,21 @@ class MedicationService {
           .or('end_date.gte.${now.toIso8601String()},end_date.is.null')
           .order('created_at');
 
-      log.t(
-        '[MS] - Medicações ativas retornadas para o usuário ${user.id}: $rows',
+      // _log.d(
+      //   '[MS] - Medicações ativas retornadas para o usuário ${user.id}: $rows',
+      // );
+
+      stopWatch.stop();
+      _log.i(
+        '[MS] - Busca por medicações ativas finalizada em ${stopWatch.elapsedMilliseconds} ms',
       );
       return rows.map(Medication.fromMap).toList();
     } catch (e) {
-      log.e('[MS] - Erro ao buscar medicações ativas', error: e);
+      stopWatch.stop();
+      _log.i(
+        '[MS] - Busca por medicações ativas finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
+      _log.e('[MS] - Erro ao buscar medicações ativas', error: e);
       throw Exception('Erro ao buscar medicações ativas: $e');
     }
   }
@@ -89,10 +119,10 @@ class MedicationService {
     try {
       final user = _db.auth.currentUser;
       if (user == null) {
-        log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
+        _log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
         throw Exception('Usuário não autenticado');
       }
-      log.t(
+      _log.i(
         '[MS] - Criando ou atualizando medicação $med para o usuário: ${user.id}',
       );
 
@@ -101,10 +131,10 @@ class MedicationService {
       final result =
           await _db.from('medications').upsert(payload).select().single();
       // print("remedio criado: $result");
-      log.t('[MS] - Resultado da operação de atualização: $result');
+      // _log.d('[MS] - Resultado da operação de atualização: $result');
       return BaseRequestResult.success(Medication.fromMap(result));
     } catch (e) {
-      log.e('[MS] - Erro ao criar ou atualizar medicação', error: e);
+      _log.e('[MS] - Erro ao criar ou atualizar medicação', error: e);
       throw Exception('Erro ao criar ou atualizar medicação: $e');
     }
   }
@@ -193,7 +223,7 @@ class MedicationService {
   }
 
   /// (Opcional) Insere evento de dose tomada manualmente com delay
-  Future<void> logTakenWithDelay(String medicationId, int delaySecs) async {
+  Future<void> _logTakenWithDelay(String medicationId, int delaySecs) async {
     final user = _db.auth.currentUser;
     if (user == null) throw Exception('Usuário não autenticado');
 

@@ -8,10 +8,12 @@ class ProfileService {
 
   /// Retorna o perfil do usuário logado.
   Future<Profile> getOwnProfile() async {
+    Stopwatch stopWatch = Stopwatch();
+    stopWatch.start();
     try {
       final user = _db.auth.currentUser!.id;
 
-      log.t('[PS] - Buscando perfil do usuário logado: $user');
+      log.i('[PS] - Buscando perfil do usuário logado: $user');
       final data =
           await _db
               .from('profiles')
@@ -19,9 +21,17 @@ class ProfileService {
               .eq('id', user)
               .single();
 
-      log.t('[PS] - Perfil retornado: $data');
+      // log.d('[PS] - Perfil retornado: $data');
+      stopWatch.stop();
+      log.i(
+        '[PS] - Busca pelou usuário finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
       return Profile.fromMap(data);
     } catch (e) {
+      stopWatch.stop();
+      log.i(
+        '[PS] - Busca pelou usuário finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
       log.e('[PS] - Erro ao buscar perfil do usuário logado', error: e);
       throw Exception('Erro ao buscar perfil: $e');
     }
@@ -30,7 +40,7 @@ class ProfileService {
   /// Retorna o perfil de um cuidador específico.
   Future<Profile> getCaregiverProfile(String id) async {
     try {
-      log.t('[PS] - Buscando perfil do cuidador: $id');
+      log.i('[PS] - Buscando perfil do cuidador: $id');
       final data =
           await _db
               .from('profiles')
@@ -39,7 +49,7 @@ class ProfileService {
               .eq('role', 'caregiver')
               .single();
 
-      log.t('[PS] - Perfil do cuidador retornado: $data');
+      // log.d('[PS] - Perfil do cuidador retornado: $data');
       return Profile.fromMap(data);
     } catch (e) {
       log.e('[PS] - Erro ao buscar perfil do cuidador', error: e);
@@ -50,7 +60,7 @@ class ProfileService {
   /// Insere ou atualiza o perfil [p].
   Future<void> upsertProfile(Profile p) async {
     try {
-      log.t('[PS] - Salvando perfil: ${p.toMap()}');
+      log.d('[PS] - Salvando perfil: ${p.toMap()}');
       await _db.from('profiles').upsert(p.toMap());
     } catch (e) {
       log.e('[PS] - Erro ao salvar perfil', error: e);

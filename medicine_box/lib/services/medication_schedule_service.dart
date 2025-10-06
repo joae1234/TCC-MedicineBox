@@ -79,20 +79,24 @@ class MedicationScheduleService {
       return BaseRequestResult.success(null);
     } catch (e) {
       log.e('[MSS] - Erro ao gerar os alertas para este medicamento', error: e);
-      throw Exception('Erro ao gerar os alertas para este medicamento: $e');
+      throw Exception('Erro ao gerar os alertas para este medicamento');
     }
   }
 
   Future<List<MedicationHistory>?> getUserNextMedication(DateTime? time) async {
+    Stopwatch stopWatch = Stopwatch();
+    stopWatch.start();
+
     try {
       final user = _db.auth.currentUser;
+      log.i(
+        '[MSS] - Iniciando busca pela próxima medicação do usuário ${user?.id}',
+      );
       if (user == null) {
+        log.e('[MSS] - Usuário não autenticado.');
         throw Exception('Usuário não autenticado.');
       }
 
-      log.t(
-        "[MSS] - Procurando medicamentos agendados para o usuário: ${user.id}",
-      );
       var query = _db
           .from('medication_history')
           .select()
@@ -100,19 +104,23 @@ class MedicationScheduleService {
           .eq('status', 'Scheduled');
 
       if (time != null) {
-        log.t(
-          "[MSS] - Procurando medicamentos agendados para esse horário: ${time.toIso8601String()}",
+        log.i(
+          "[MSS] - Procurando agendamentos para horário específico: ${time.toIso8601String()}",
         );
         query = query.eq('scheduled_at', time.toIso8601String());
       }
 
       final response = await query.order('scheduled_at', ascending: true);
 
-      log.t("[MSS] - Response do getUserNextMedication: $response");
+      log.d("[MSS] - Response do getUserNextMedication: $response");
 
       if (response == null) {
+        stopWatch.stop();
         log.w(
           "[MSS] - Nenhum agendamento foi encontrado para o user ${user.id}",
+        );
+        log.i(
+          '[MSS] - Busca pela próxima medicação finalizada em ${stopWatch.elapsedMilliseconds} ms',
         );
         return null;
       }
@@ -132,10 +140,18 @@ class MedicationScheduleService {
               )
               .toList();
 
+      stopWatch.stop();
+      log.i(
+        '[MSS] - Busca pela próxima medicação finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
       return list;
     } catch (e) {
       log.e('[MSS] - Erro buscar a próxima medicação do usuário', error: e);
-      throw Exception('Erro buscar a próxima medicação do usuário: $e');
+      stopWatch.stop();
+      log.i(
+        '[MSS] - Busca pela próxima medicação finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
+      throw Exception('Erro buscar a próxima medicação do usuário');
     }
   }
 
@@ -144,8 +160,10 @@ class MedicationScheduleService {
     String status,
     DateTime? takenAt,
   ) async {
+    Stopwatch stopWatch = Stopwatch();
+    stopWatch.start();
     try {
-      log.t('[MSS] - Atualizando status da medicação $id para $status');
+      log.i('[MSS] - Atualizando status da medicação $id para $status');
       await _db
           .from('medication_history')
           .update({
@@ -153,9 +171,17 @@ class MedicationScheduleService {
             'taken_at': takenAt?.toUtc().toIso8601String(),
           })
           .eq('id', id);
+      stopWatch.stop();
+      log.i(
+        '[MSS] - Atualização do status da medicação finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
     } catch (e) {
       log.e('[MSS] - Erro ao atualizar o status da medicação', error: e);
-      throw Exception('Erro ao atualizar o status da medicação: $e');
+      stopWatch.stop();
+      log.i(
+        '[MSS] - Atualização do status da medicação finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
+      throw Exception('Erro ao atualizar o status da medicação');
     }
   }
 }
@@ -169,7 +195,7 @@ class UserHistoryResult {
 extension MedicationScheduleServiceHistory on MedicationScheduleService {
   Future<UserHistoryResult> getUserHistoryWithMedNames(String userId) async {
     try {
-      log.t(
+      log.i(
         '[MSS] - Procurando histórico de medicamentos para o usuário: $userId',
       );
       final histRes = await _db

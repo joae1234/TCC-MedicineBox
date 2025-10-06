@@ -9,7 +9,7 @@ class InvitationService {
   Future<void> sendInvitation(String caregiverName) async {
     try {
       // TO DO: melhorar busca, usar endpoint no service de profile
-      log.t('[IS] - Procurando cuidador com o nome: $caregiverName');
+      log.i('[IS] - Procurando cuidador com o nome: $caregiverName');
       final response =
           await _db
               .from('profiles')
@@ -17,7 +17,7 @@ class InvitationService {
               .eq('full_name', caregiverName)
               .eq('role', 'caregiver')
               .maybeSingle();
-      log.t('[IS] - Resultado da busca pelo cuidador: $response');
+      // log.d('[IS] - Resultado da busca pelo cuidador: $response');
 
       if (response == null) {
         log.w(
@@ -37,7 +37,7 @@ class InvitationService {
         throw Exception('Já existe um convite pendente para este cuidador.');
       }
 
-      log.t('[IS] - Enviando convite para o cuidador: $caregiverId');
+      log.i('[IS] - Enviando convite para o cuidador: $caregiverId');
       await _db.from('caregiver_invitations').insert({
         'created_at': DateTime.now().toUtc().toIso8601String(),
         'caregiver_id': caregiverId,
@@ -55,11 +55,11 @@ class InvitationService {
   /// IMPORTANTE: o vínculo na tabela patient_caregivers é criado por TRIGGER no banco.
   Future<void> respondInvitation(String invitationId, bool accepted) async {
     try {
-      log.t('[IS] - Respondendo convite $invitationId');
+      log.i('[IS] - Respondendo convite de id$invitationId');
       final status = accepted ? 'Accepted' : 'Rejected';
-      log.t('[IS] - Resposta do convite escolhida pelo cuidador: $status');
+      log.i('[IS] - Resposta do convite escolhida pelo cuidador: $status');
 
-      log.t('[IS] - Atualizando status do convite no banco de dados');
+      log.i('[IS] - Atualizando status do convite no banco de dados');
       await _db
           .from('caregiver_invitations')
           .update({
@@ -75,7 +75,7 @@ class InvitationService {
 
   Future<bool> hasPendingInvitation(String caregiverId) async {
     try {
-      log.t(
+      log.i(
         '[IS] - Verificando convites pendentes para o cuidador: $caregiverId',
       );
       final record =
@@ -86,7 +86,7 @@ class InvitationService {
               .eq('status', 'Pending')
               .maybeSingle();
 
-      log.t('[IS] - Resultado da busca hasPendingInvitation: $record');
+      // log.d('[IS] - Resultado da busca hasPendingInvitation: $record');
       return record != null;
     } catch (e) {
       log.e('[IS] - Erro ao verificar convites pendentes', error: e);
@@ -103,7 +103,7 @@ class InvitationService {
       throw Exception('Usuário não autenticado');
     }
 
-    log.t('[IS] - Buscando convites pendentes para o cuidador logado: $uid');
+    log.i('[IS] - Buscando convites pendentes para o cuidador logado: $uid');
     // 1) convites pendentes destinados ao cuidador logado
     final invRes = await _db
         .from('caregiver_invitations')
