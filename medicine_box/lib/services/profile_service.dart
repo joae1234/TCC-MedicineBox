@@ -21,16 +21,15 @@ class ProfileService {
               .eq('id', user)
               .single();
 
-      // log.d('[PS] - Perfil retornado: $data');
       stopWatch.stop();
       log.i(
-        '[PS] - Busca pelou usuário finalizada em ${stopWatch.elapsedMilliseconds} ms',
+        '[PS] - Busca pelo usuário finalizada em ${stopWatch.elapsedMilliseconds} ms',
       );
       return Profile.fromMap(data);
     } catch (e) {
       stopWatch.stop();
       log.i(
-        '[PS] - Busca pelou usuário finalizada em ${stopWatch.elapsedMilliseconds} ms',
+        '[PS] - Busca pelo usuário finalizada em ${stopWatch.elapsedMilliseconds} ms',
       );
       log.e('[PS] - Erro ao buscar perfil do usuário logado', error: e);
       throw Exception('Erro ao buscar perfil: $e');
@@ -49,7 +48,6 @@ class ProfileService {
               .eq('role', 'caregiver')
               .single();
 
-      // log.d('[PS] - Perfil do cuidador retornado: $data');
       return Profile.fromMap(data);
     } catch (e) {
       log.e('[PS] - Erro ao buscar perfil do cuidador', error: e);
@@ -69,11 +67,6 @@ class ProfileService {
   }
 
   /// Pacientes do cuidador logado (via tabela de junção patient_caregivers).
-  ///
-  /// IMPORTANTE: como patient_caregivers possui DUAS FKs para profiles
-  /// (patient_id e caregiver_id), precisamos indicar explicitamente
-  /// a FK usada para embutir o perfil do paciente, senão dá ambiguidade:
-  ///   profiles!patient_caregivers_patient_id_fkey(*)
   Future<List<Profile>> getMyPatients() async {
     try {
       final uid = _db.auth.currentUser?.id;
@@ -97,9 +90,7 @@ class ProfileService {
     }
   }
 
-  /// (Opcional) Cuidadores de um paciente específico, caso você use em alguma tela.
-  /// Exemplifica o join pela outra FK:
-  ///   profiles!patient_caregivers_caregiver_id_fkey(*)
+  /// Cuidadores de um paciente específico.
   Future<List<Profile>> getCaregiversOfPatient(String patientId) async {
     try {
       final res = await _db
@@ -117,6 +108,38 @@ class ProfileService {
     } catch (e) {
       log.e('[PS] - Erro ao buscar cuidadores do paciente', error: e);
       throw Exception('Erro ao buscar cuidadores do paciente: $e');
+    }
+  }
+
+  // Função para remover o vínculo de paciente de um cuidador
+  Future<void> removePatientRelation(String caregiverId, String patientId) async {
+    try {
+      // Remove o vínculo entre o cuidador e o paciente na tabela patient_caregivers
+      await _db
+          .from('patient_caregivers')
+          .delete()
+          .eq('caregiver_id', caregiverId)
+          .eq('patient_id', patientId);
+      log.i('[PS] - Vínculo entre paciente e cuidador removido com sucesso.');
+    } catch (e) {
+      log.e('[PS] - Erro ao remover vínculo do paciente', error: e);
+      throw Exception('Erro ao remover vínculo do paciente: $e');
+    }
+  }
+
+  // Função para remover o vínculo de cuidador de um paciente
+  Future<void> removeCaregiverRelation(String patientId, String caregiverId) async {
+    try {
+      // Remove o vínculo entre o paciente e o cuidador na tabela patient_caregivers
+      await _db
+          .from('patient_caregivers')
+          .delete()
+          .eq('patient_id', patientId)
+          .eq('caregiver_id', caregiverId);
+      log.i('[PS] - Vínculo entre cuidador e paciente removido com sucesso.');
+    } catch (e) {
+      log.e('[PS] - Erro ao remover vínculo do cuidador', error: e);
+      throw Exception('Erro ao remover vínculo do cuidador: $e');
     }
   }
 }
