@@ -1,12 +1,17 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:logger/logger.dart';
+import 'package:medicine_box/models/enum/mqtt_topics_enum.dart';
+import 'package:medicine_box/models/enum/mqtt_type_action_enum.dart';
 import 'package:medicine_box/models/medication_alarm_details.dart';
 import 'package:medicine_box/models/medication_history.dart';
+import 'package:medicine_box/models/mqtt_action_message.dart';
 import 'package:medicine_box/models/next_user_alarm.dart';
 import 'package:medicine_box/models/profile_model.dart';
 import 'package:medicine_box/services/medication_schedule_service.dart';
 import 'package:medicine_box/services/profile_service.dart';
+import 'package:mqtt_client/mqtt_client.dart';
 import '../models/medication.dart';
 import '../services/medication_service.dart';
 import '../services/mqtt_service.dart';
@@ -47,13 +52,20 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Future<void> _init() async {
+    Stopwatch stopWatch = Stopwatch();
+
     _log.i("[MLP] - Incializando a main page de medicações");
     if (mounted) setState(() => _loadingMqtt = true);
 
-    _log.i("[MLP] - Incializando conexão com o MQTT...");
+    _log.i("[MLP] - Incializando conexão com o Broker MQTT...");
+    stopWatch.start();
     _mqtt
         .connect()
         .then((result) {
+          stopWatch.stop();
+          _log.i(
+            '[MLP] - Conexão MQTT finalizada em ${stopWatch.elapsedMilliseconds} ms',
+          );
           if (mounted) {
             setState(() {
               _loadingMqtt = false;
@@ -63,6 +75,11 @@ class _MedicationListPageState extends State<MedicationListPage> {
           _listenMqtt();
         })
         .catchError((e) {
+          stopWatch.stop();
+          _log.w(
+            '[MLP] - Conexão MQTT finalizada com erro em ${stopWatch.elapsedMilliseconds} ms',
+          );
+          // _log.d('[MLP] - Erro na conexão MQTT: $e');
           if (mounted) {
             setState(() {
               _loadingMqtt = false;
@@ -76,6 +93,18 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   void _listenMqtt() {
+    _log.i("[MLP] - Inicializando listener de mensagens do MQTT");
+
+    _mqtt.alarmMessagesStream.listen((msg) async {
+      try {
+        _log.i("[MLP] - Mensagem de alarme recebida do MQTT: ${msg.toJson()}");
+      } catch (e) {
+        _log.e(
+          "[MLP] - Erro ao processar mensagem de alarme recebida do MQTT",
+          error: e,
+        );
+      }
+    });
     // _mqtt.client.updates!.listen((events) async {
     //   final recMess = events[0].payload as MqttPublishMessage;
     //   final topic = events[0].topic;
@@ -86,11 +115,11 @@ class _MedicationListPageState extends State<MedicationListPage> {
     //     final now = DateTime.now();
     //     final delay = now.difference(_lastAlarmTime!).inSeconds;
 
-    //     try {
-    //       await _medSvc.updateStatus(_lastHistId!, delay);
-    //     } catch (e) {
-    //       debugPrint("❌ Erro no update status: $e");
-    //     }
+    //     // try {
+    //     //   await _medSvc.updateStatus(_lastHistId!, delay);
+    //     // } catch (e) {
+    //     //   debugPrint("❌ Erro no update status: $e");
+    //     // }
 
     //     _lastAlarmTime = null;
     //   }
@@ -98,13 +127,17 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   void _startAlarmLoop() {
+    // Cancela qualquer timer existente, evitando duplicação de eventos
     _checkTimer?.cancel();
+    // Incialização do loop de alarmes (Execução a cada 1 minuto)
+    _log.i("[MLP] - Iniciando o loop de verificação de alarmes");
     _checkTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       _checkAlarms();
     });
   }
 
   Future<void> _checkAlarms() async {
+    _log.i("[MLP] - Verificando alarmes");
     final now = DateTime.now();
     await _getNextMedication();
 
@@ -112,18 +145,41 @@ class _MedicationListPageState extends State<MedicationListPage> {
 
     final diff = now.difference(_nextMedAlarm!.scheduled_at);
 
+    // Checando se está no horário do alarme (com tolerância de 1 minuto para mais ou para menos)
     if (diff.abs() < const Duration(minutes: 1)) {
+      _log.i(
+        "[MLP] - Alarme disparado: $_nextMedAlarm - usuário: ${_nextMedAlarm!.userId}",
+      );
       if (_lastAlarmTime != null &&
           now.difference(_lastAlarmTime!).inMinutes < 5) {
+        _log.i("[MLP] - Alarme já disparado recentemente. Ignorando...");
         return;
       }
 
+      // Envia o comando para o Broker MQTT (se a conexão estiver OK)
       if (_isConnectionSuccessful) {
-        _mqtt.sendCommand("on");
+        _log.i("[MLP] - Enviando comando de ativação do alarme para o MQTT");
+        final msg =
+            MqttActionMessage(
+              type: MqttActionTypeEnum.activateAlarm,
+              source: '',
+              target: '',
+              metadata: {
+                "userId": _nextMedAlarm!.userId,
+                "medications":
+                    _nextMedAlarm!.medicationAlarmDetails
+                        .map((e) => e.toMap())
+                        .toList(),
+              },
+            ).toJsonString();
+        _log.d("[MLP] - Enviando comando MQTT: $msg");
+
+        _mqtt.sendAlarmCommand(msg, _nextMedAlarm!.userId);
       }
 
       _lastAlarmTime = now;
 
+      // TO DO: Implementar a popup de alarme na interface. Deveria aparecer independente do aplicativo estar aberto ou não, similar ao alarme do celular
       // if (_nextMed != null) _showAlarmPopup(_nextMed!);
       return;
     }
@@ -151,36 +207,63 @@ class _MedicationListPageState extends State<MedicationListPage> {
   }
 
   Future<void> _getNextMedication() async {
+    _log.i("[MLP] - Buscando a próxima medicação do usuário");
     try {
+      // Inicializa uma variável para guardar o resultado do banco (CASO NECESSÁRIO)
       List<MedicationHistory>? nextMedAlarmResult;
-      _log.i("_nextMedAlarm: $_nextMedAlarm");
-      print(
-        "Chamando getUserNextMedication com: ${_nextMedAlarm?.scheduled_at}",
+      _log.i(
+        "[MLP] - Verificando se já há um alarme existente: $_nextMedAlarm",
       );
+
+      // Somente consulta a próxima medicação no banco se não houver uma já carregada na página
       _nextMedAlarm == null
           ? nextMedAlarmResult = await _medScheduleSvc.getUserNextMedication(
             _nextMedAlarm?.scheduled_at,
           )
           : nextMedAlarmResult = null;
 
-      print("nextMedAlarmResult: $nextMedAlarmResult");
+      _log.d("[MLP] - Resultado da consulta no banco: $nextMedAlarmResult");
 
+      // Se uma consulta tiver sido realizada e o retorno não foi nulo, atualiza o próximo alarme
       if (nextMedAlarmResult != null && nextMedAlarmResult.isNotEmpty) {
-        print("Entrou no if do nextMedAlarmResult");
+        _log.i(
+          "[MLP] - Atualizando o próximo alarme com os dados consultados do banco",
+        );
+        _log.i("[MLP] - Buscando os detalhes das próximas medicações");
+        // Busca os detalhes das medicações agendadas (nomes, etc)
         final meds = await _medSvc.getById(
           nextMedAlarmResult.map((e) => e.medicationId).toList(),
         );
 
-        print("meds: $meds");
+        _log.d("[MLP] - Medicações retornadas: $meds");
 
+        // Sobe uma exceção caso as medicações agendadas não sejam encontradas no banco
         if (meds == null || meds.isEmpty) {
+          _log.e(
+            "[MLP] - Não foram encontrados os detalhes dos medicamentos salvos para o próximo alarme",
+          );
           throw Exception("Medicações não encontradas para o próximo alarme.");
         }
 
-        final listMedNames = meds.map((e) => e.name).toList();
+        // Cria uma lista somente com os nomes das medicações agendadas
+        final listMedNames =
+            nextMedAlarmResult.map((e) {
+              final med = meds.firstWhere(
+                (m) => m.id == e.medicationId,
+                orElse:
+                    () =>
+                        throw Exception(
+                          "Medicação não encontrada para ID ${e.medicationId}",
+                        ),
+              );
+              return med.name;
+            }).toList();
 
-        print("listMedNames: $listMedNames");
+        _log.d(
+          "[MLP] - Lista com os nomes das medicações (ordenada): $listMedNames",
+        );
 
+        // Atualiza a variável de estado responsável pelo próximo alarme com as novas medicações
         _nextMedAlarm = NextUserAlarm(
           userId: nextMedAlarmResult[0].userId,
           medicationAlarmDetails:
@@ -196,13 +279,18 @@ class _MedicationListPageState extends State<MedicationListPage> {
           scheduled_at: nextMedAlarmResult[0].scheduled_at,
         );
 
-        print("_nextMedAlarm atualizado: $_nextMedAlarm");
+        // _log.d("[MLP] - Próximo alarme atualizado: $_nextMedAlarm");
       }
 
       if (_nextMedAlarm != null) {
         final diff = DateTime.now().difference(_nextMedAlarm!.scheduled_at);
 
+        // Tolerância de 15 minutos antes de marcar como "missed"
         if (diff > const Duration(minutes: 15)) {
+          _log.i(
+            "[MLP] - As medicações do último alarme foram perdidas. Atualizando status para 'Missed'",
+          );
+          // Atualizando o status de todas as medicações do alarme para "Missed"
           for (final medDetail in _nextMedAlarm!.medicationAlarmDetails) {
             await _medScheduleSvc.updateMedicationStatus(
               medDetail.id,
@@ -210,6 +298,10 @@ class _MedicationListPageState extends State<MedicationListPage> {
               null,
             );
           }
+
+          _log.i(
+            "[MLP] - Status atualizado. Limpando o próximo alarme: $_nextMedAlarm",
+          );
           _nextMedAlarm = null;
           await _getNextMedication();
         }
@@ -221,7 +313,8 @@ class _MedicationListPageState extends State<MedicationListPage> {
         });
       }
     } catch (e) {
-      debugPrint("Erro ao buscar a próxima medicação: $e");
+      _log.e("[MLP] - Erro ao buscar a próxima medicação do usuário", error: e);
+      throw Exception("Erro ao buscar a próxima medicação");
     }
   }
 
@@ -229,12 +322,15 @@ class _MedicationListPageState extends State<MedicationListPage> {
     _log.i("[MLP] - Carregando a página de medicações");
     if (mounted) setState(() => _loading = true);
 
-    _log.i("[MLP] - Buscando detalhes do usuário logado");
+    // Pega os detalhes do usuário logado
     _userProfile = await _profileSvc.getOwnProfile();
 
+    // Buscsa todas as medicações ativas associadas ao usuário
     final meds = await _medSvc.getActiveMeds();
+    // Procura a próxima medicação
     await _getNextMedication();
 
+    // Atualiza a lista de medicações na interface
     _meds = meds;
 
     if (mounted) setState(() => _loading = false);

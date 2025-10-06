@@ -8,6 +8,8 @@ class ProfileService {
 
   /// Retorna o perfil do usuário logado.
   Future<Profile> getOwnProfile() async {
+    Stopwatch stopWatch = Stopwatch();
+    stopWatch.start();
     try {
       final user = _db.auth.currentUser!.id;
 
@@ -20,8 +22,16 @@ class ProfileService {
               .single();
 
       // log.d('[PS] - Perfil retornado: $data');
+      stopWatch.stop();
+      log.i(
+        '[PS] - Busca pelou usuário finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
       return Profile.fromMap(data);
     } catch (e) {
+      stopWatch.stop();
+      log.i(
+        '[PS] - Busca pelou usuário finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
       log.e('[PS] - Erro ao buscar perfil do usuário logado', error: e);
       throw Exception('Erro ao buscar perfil: $e');
     }
