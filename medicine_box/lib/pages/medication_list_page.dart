@@ -213,7 +213,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
       if (_nextMedAlarm != null) {
         final diff = DateTime.now().difference(_nextMedAlarm!.scheduled_at);
 
-        if (diff > const Duration(minutes: 15)) {
+        if (diff > const Duration(minutes: 10)) {
           for (final medDetail in _nextMedAlarm!.medicationAlarmDetails) {
             await _medScheduleSvc.updateMedicationStatus(
               medDetail.id,
