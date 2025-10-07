@@ -16,10 +16,12 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   final _weekdays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
   final Set<String> _selectedDays = {};
   final List<TimeOfDay> _times = [];
-
+  
   DateTime? _startDate;
   DateTime? _endDate;
   bool _saving = false;
+
+  int _dosage = 1; // Definindo um valor inicial para a dosagem
 
   @override
   void initState() {
@@ -39,83 +41,45 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
       );
       _startDate = med.startDate;
       _endDate = med.endDate;
+      _dosage = int.tryParse(med.dosage ?? '1') ?? 1; // Preenche com a dosagem armazenada
     }
   }
 
   void _addTime() async {
     final hours = List.generate(24, (i) => i);
 
-    final selected = await showDialog<int>(
-      context: context,
-      builder: (ctx) {
-        return Dialog(
-          child: SizedBox(
-            width: MediaQuery.of(ctx).size.width * 0.5,
-            height: MediaQuery.of(ctx).size.height * 0.3,
-            child: SimpleDialog(
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
+    final selected = await showDialog<int>(context: context, builder: (ctx) {
+      return Dialog(
+        child: SizedBox(
+          width: MediaQuery.of(ctx).size.width * 0.5,
+          height: MediaQuery.of(ctx).size.height * 0.3,
+          child: SimpleDialog(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            titlePadding: EdgeInsets.zero,
+            title: Container(
+              width: double.infinity,
+              color: Colors.blue,
+              padding: const EdgeInsets.all(8),
+              child: const Center(
+                child: Text("Selecione o horário", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
               ),
-              titlePadding: EdgeInsets.zero,
-              title: Container(
-                width: double.infinity,
-                color: Colors.blue,
-                padding: const EdgeInsets.all(8),
-                child: const Center(
-                  child: Text(
-                    "Selecione o horário",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                ),
-              ),
-              children:
-                  hours
-                      .map(
-                        (h) => SimpleDialogOption(
-                          onPressed: () => Navigator.pop(ctx, h),
-                          child: Center(
-                            child: Text(
-                              '${h.toString().padLeft(2, '0')}:00:00',
-                              style: const TextStyle(fontSize: 16),
-                            ),
-                          ),
-                        ),
-                      )
-                      .toList(),
             ),
+            children: hours
+                .map((h) => SimpleDialogOption(
+                      onPressed: () => Navigator.pop(ctx, h),
+                      child: Center(child: Text('${h.toString().padLeft(2, '0')}:00:00', style: const TextStyle(fontSize: 16))),
+                    ))
+                .toList(),
           ),
-        );
-      },
-    );
+        ),
+      );
+    });
 
     if (selected != null) {
       setState(() {
         _times.add(TimeOfDay(hour: selected, minute: 0));
       });
     }
-
-    // final now = TimeOfDay.now();
-    // final picked = await showTimePicker(
-    //   context: context,
-    //   initialTime: now,
-    //   builder: (context, child) {
-    //     return MediaQuery(
-    //       data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-    //       child: child!,
-    //     );
-    //   },
-    // );
-
-    // if (picked != null) {
-    //   // força para múltiplos de 30
-    //   final normalizedMinute = (picked.minute < 30) ? 0 : 30;
-    //   final adjusted = TimeOfDay(hour: picked.hour, minute: normalizedMinute);
-
-    //   setState(() {
-    //     _times.add(adjusted);
-    //   });
-    // }
   }
 
   void _removeTime(TimeOfDay t) {
@@ -136,14 +100,11 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
     final med = Medication(
       id: widget.medication?.id,
       name: name,
+      dosage: _dosage.toString(), // Convertendo a dosagem para string
       days: _selectedDays.toList(),
-      schedules:
-          _times
-              .map(
-                (t) =>
-                    "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}",
-              )
-              .toList(),
+      schedules: _times
+          .map((t) => "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}")
+          .toList(),
       startDate: _startDate,
       endDate: _endDate,
     );
@@ -167,25 +128,48 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
               ),
             ),
             const SizedBox(height: 16),
+            // Adicionando o Stepper para dosagem
+            Row(
+              children: [
+                const Text("Dosagem: ", style: TextStyle(fontSize: 16)),
+                IconButton(
+                  icon: const Icon(Icons.remove),
+                  onPressed: () {
+                    setState(() {
+                      if (_dosage > 1) _dosage--;
+                    });
+                  },
+                ),
+                Text("$_dosage", style: const TextStyle(fontSize: 18)),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  onPressed: () {
+                    setState(() {
+                      _dosage++;
+                    });
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
             Wrap(
               spacing: 8,
-              children:
-                  _weekdays.map((dia) {
-                    final selected = _selectedDays.contains(dia);
-                    return FilterChip(
-                      label: Text(dia),
-                      selected: selected,
-                      onSelected: (val) {
-                        setState(() {
-                          if (val) {
-                            _selectedDays.add(dia);
-                          } else {
-                            _selectedDays.remove(dia);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+              children: _weekdays.map((dia) {
+                final selected = _selectedDays.contains(dia);
+                return FilterChip(
+                  label: Text(dia),
+                  selected: selected,
+                  onSelected: (val) {
+                    setState(() {
+                      if (val) {
+                        _selectedDays.add(dia);
+                      } else {
+                        _selectedDays.remove(dia);
+                      }
+                    });
+                  },
+                );
+              }).toList(),
             ),
             const SizedBox(height: 16),
             ..._times.map(
