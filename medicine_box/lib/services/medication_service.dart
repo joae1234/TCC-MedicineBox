@@ -1,12 +1,12 @@
-import 'package:logger/logger.dart';
 import 'package:medicine_box/models/base_request_result.dart';
+import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/medication.dart';
 import '../models/medication_history.dart';
 
 class MedicationService {
   final SupabaseClient _db = Supabase.instance.client;
-  final _log = Logger();
+  final _log = LogService().logger;
 
   Future<List<Medication>?> getById(List<String> id) async {
     Stopwatch stopWatch = Stopwatch();

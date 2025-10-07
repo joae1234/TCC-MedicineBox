@@ -1,11 +1,11 @@
 import 'package:medicine_box/models/base_request_result.dart';
 import 'package:medicine_box/models/medication_history.dart';
+import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:logger/logger.dart';
 
 class MedicationScheduleService {
   final SupabaseClient _db = Supabase.instance.client;
-  final log = Logger();
+  final log = LogService().logger;
 
   Future<BaseRequestResult<void>> upsertMedicationSchedule(
     String medicationId,
