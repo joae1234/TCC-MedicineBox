@@ -1,9 +1,9 @@
+import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:logger/logger.dart';
 
 class InvitationService {
   final SupabaseClient _db = Supabase.instance.client;
-  final log = Logger();
+  final log = LogService().logger;
 
   /// Paciente convida um cuidador pelo NOME (full_name == caregiverName)
   Future<void> sendInvitation(String caregiverName) async {

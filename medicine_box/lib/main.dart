@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'pages/welcome_page.dart';
@@ -10,6 +11,8 @@ Future<void> main() async {
     anonKey:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV5dmZzc29vbnZyYnZydWxxbG9iIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgxMTUzNDMsImV4cCI6MjA2MzY5MTM0M30.yYJjgDL1tUd1u15RooOZVoWZRd1hdwL0OX48jtdyEAg',
   );
+  final logService = LogService();
+  await logService.init();
   runApp(const MyApp());
 }
 

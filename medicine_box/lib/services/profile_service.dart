@@ -1,10 +1,10 @@
+import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/profile_model.dart';
-import 'package:logger/logger.dart';
 
 class ProfileService {
   final SupabaseClient _db = Supabase.instance.client;
-  final log = Logger();
+  final log = LogService().logger;
 
   /// Retorna o perfil do usuário logado.
   Future<Profile> getOwnProfile() async {
@@ -112,7 +112,10 @@ class ProfileService {
   }
 
   // Função para remover o vínculo de paciente de um cuidador
-  Future<void> removePatientRelation(String caregiverId, String patientId) async {
+  Future<void> removePatientRelation(
+    String caregiverId,
+    String patientId,
+  ) async {
     try {
       // Remove o vínculo entre o cuidador e o paciente na tabela patient_caregivers
       await _db
@@ -128,7 +131,10 @@ class ProfileService {
   }
 
   // Função para remover o vínculo de cuidador de um paciente
-  Future<void> removeCaregiverRelation(String patientId, String caregiverId) async {
+  Future<void> removeCaregiverRelation(
+    String patientId,
+    String caregiverId,
+  ) async {
     try {
       // Remove o vínculo entre o paciente e o cuidador na tabela patient_caregivers
       await _db

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:logger/logger.dart';
 import 'package:medicine_box/models/enum/mqtt_topics_enum.dart';
 import 'package:medicine_box/models/mqtt_action_message.dart';
+import 'package:medicine_box/services/log_service.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
 
@@ -16,7 +16,7 @@ class MqttService {
   // final int brokerPort = <PROD_BROKER_PORT>; -> VALORES PARA PROD
   final String topicAlarmCommand = MqttTopicsEnum.alarmCommmand.name;
   final String topicAlarmStatus = MqttTopicsEnum.alarmStatus.name;
-  final _log = Logger();
+  final _log = LogService().logger;
   final _messageStreamController =
       StreamController<MqttActionMessage>.broadcast();
 

@@ -1,12 +1,12 @@
-import 'package:logger/logger.dart';
 import 'package:medicine_box/models/base_request_result.dart';
+import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/medication.dart';
 import '../models/medication_history.dart';
 
 class MedicationService {
   final SupabaseClient _db = Supabase.instance.client;
-  final _log = Logger();
+  final _log = LogService().logger;
 
   Future<List<Medication>?> getById(List<String> id) async {
     Stopwatch stopWatch = Stopwatch();
@@ -56,21 +56,37 @@ class MedicationService {
 
   /// Carrega todas as medicações do usuário autenticado
   Future<List<Medication>> getAll() async {
-    final user = _db.auth.currentUser;
-    if (user == null) {
-      _log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
-      throw Exception('Usuário não autenticado');
+    Stopwatch stopWatch = Stopwatch();
+    stopWatch.start();
+    try {
+      final user = _db.auth.currentUser;
+      if (user == null) {
+        _log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
+        throw Exception('Usuário não autenticado');
+      }
+
+      _log.i('[MS] - Buscando todas as medicações para o usuário: ${user.id}');
+      final rows = await _db
+          .from('medications')
+          .select<List<Map<String, dynamic>>>()
+          .eq('user_id', user.id)
+          .order('created_at');
+
+      // _log.d('[MS] - Medicações retornadas para o usuário ${user.id}: $rows');
+
+      stopWatch.stop();
+      _log.i(
+        '[MS] - Busca por todas as medicações finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
+      return rows.map(Medication.fromMap).toList();
+    } catch (e) {
+      stopWatch.stop();
+      _log.i(
+        '[MS] - Busca por todas as medicações finalizada em ${stopWatch.elapsedMilliseconds} ms',
+      );
+      _log.e('[MS] - Erro ao buscar todas as medicações', error: e);
+      throw Exception('Erro ao buscar todas as medicações: $e');
     }
-
-    _log.i('[MS] - Buscando todas as medicações para o usuário: ${user.id}');
-    final rows = await _db
-        .from('medications')
-        .select<List<Map<String, dynamic>>>()
-        .eq('user_id', user.id)
-        .order('created_at');
-
-    // _log.d('[MS] - Medicações retornadas para o usuário ${user.id}: $rows');
-    return rows.map(Medication.fromMap).toList();
   }
 
   /// Carrega todas as medicações ativas do usuário autenticado
@@ -123,15 +139,15 @@ class MedicationService {
         throw Exception('Usuário não autenticado');
       }
       _log.i(
-        '[MS] - Criando ou atualizando medicação $med para o usuário: ${user.id}',
+        '[MS] - Criando ou atualizando medicação ${med.toMap()} para o usuário: ${user.id}',
       );
 
       final payload = med.toMap()..['user_id'] = user.id;
 
       final result =
           await _db.from('medications').upsert(payload).select().single();
-      // print("remedio criado: $result");
-      // _log.d('[MS] - Resultado da operação de atualização: $result');
+
+      _log.d('[MS] - Resultado da operação de atualização: $result');
       return BaseRequestResult.success(Medication.fromMap(result));
     } catch (e) {
       _log.e('[MS] - Erro ao criar ou atualizar medicação', error: e);

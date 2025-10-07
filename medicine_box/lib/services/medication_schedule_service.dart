@@ -1,11 +1,11 @@
 import 'package:medicine_box/models/base_request_result.dart';
 import 'package:medicine_box/models/medication_history.dart';
+import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:logger/logger.dart';
 
 class MedicationScheduleService {
   final SupabaseClient _db = Supabase.instance.client;
-  final log = Logger();
+  final log = LogService().logger;
 
   Future<BaseRequestResult<void>> upsertMedicationSchedule(
     String medicationId,
@@ -97,18 +97,32 @@ class MedicationScheduleService {
         throw Exception('Usuário não autenticado.');
       }
 
+      log.i('[MSS] - Buscando o próximo horário agendado');
+      final nextScheduledDate = await getNearestScheduledDate();
+
+      if (nextScheduledDate == null) {
+        stopWatch.stop();
+        log.w(
+          '[MSS] - Nenhum agendamento encontrado para o usuário ${user.id}',
+        );
+        log.i(
+          '[MSS] - Busca pela próxima medicação finalizada em ${stopWatch.elapsedMilliseconds} ms',
+        );
+        return null;
+      }
+
+      time = time ?? nextScheduledDate;
+
+      log.i(
+        "[MSS] - Procurando agendamentos para horário específico: ${time.toIso8601String()}",
+      );
+
       var query = _db
           .from('medication_history')
           .select()
           .eq('user_id', user.id)
-          .eq('status', 'Scheduled');
-
-      if (time != null) {
-        log.i(
-          "[MSS] - Procurando agendamentos para horário específico: ${time.toIso8601String()}",
-        );
-        query = query.eq('scheduled_at', time.toIso8601String());
-      }
+          .eq('status', 'Scheduled')
+          .eq('scheduled_at', time.toIso8601String());
 
       final response = await query.order('scheduled_at', ascending: true);
 
@@ -152,6 +166,42 @@ class MedicationScheduleService {
         '[MSS] - Busca pela próxima medicação finalizada em ${stopWatch.elapsedMilliseconds} ms',
       );
       throw Exception('Erro buscar a próxima medicação do usuário');
+    }
+  }
+
+  Future<DateTime?> getNearestScheduledDate() async {
+    try {
+      log.i('[MSS] - Buscando a data agendada mais próxima');
+      final user = _db.auth.currentUser;
+      if (user == null) {
+        log.e('[MSS] - Usuário não autenticado.');
+        throw Exception('Usuário não autenticado.');
+      }
+
+      final response =
+          await _db
+              .from('medication_history')
+              .select('scheduled_at')
+              .eq('user_id', user.id)
+              .eq('status', 'Scheduled')
+              .gte('scheduled_at', DateTime.now().toIso8601String())
+              .order('scheduled_at', ascending: true)
+              .limit(1)
+              .single();
+
+      log.d("[MSS] - Response do getNearestScheduledDate: $response");
+
+      if (response == null) {
+        log.w(
+          '[MSS] - Nenhum agendamento encontrado para o usuário ${user.id}',
+        );
+        return null;
+      }
+
+      return DateTime.parse(response['scheduled_at'] as String);
+    } catch (e) {
+      log.e('[MSS] - Erro ao buscar a data agendada mais próxima', error: e);
+      throw Exception('Erro ao buscar a data agendada mais próxima: $e');
     }
   }
 
