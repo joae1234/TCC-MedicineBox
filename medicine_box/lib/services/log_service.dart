@@ -45,7 +45,7 @@ class LogService {
         colors: false,
         dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
       ),
-      output: MultiOutput([ConsoleOutput(), fileOutput]),
+      output: ConsoleOutput(),
       level: Level.debug,
     );
 
