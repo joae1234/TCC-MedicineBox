@@ -187,7 +187,7 @@ class MedicationScheduleService {
               .gte('scheduled_at', DateTime.now().toIso8601String())
               .order('scheduled_at', ascending: true)
               .limit(1)
-              .single();
+              .maybeSingle();
 
       log.d("[MSS] - Response do getNearestScheduledDate: $response");
 
