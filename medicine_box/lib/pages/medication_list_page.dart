@@ -242,7 +242,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
     if (mounted) setState(() => _loading = true);
 
     _userProfile = await _profileSvc.getOwnProfile();
-    final meds = await _medSvc.getActiveMeds();
+    final meds = await _medSvc.getAll();
     await _getNextMedication();
     _meds = meds;
 

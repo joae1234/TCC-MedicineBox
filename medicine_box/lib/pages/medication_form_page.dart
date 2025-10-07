@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medicine_box/services/log_service.dart';
 import '../models/medication.dart';
 
 class MedicationFormPage extends StatefulWidget {
@@ -16,7 +17,8 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   final _weekdays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sab', 'Dom'];
   final Set<String> _selectedDays = {};
   final List<TimeOfDay> _times = [];
-  
+  final _log = LogService().logger;
+
   DateTime? _startDate;
   DateTime? _endDate;
   bool _saving = false;
@@ -41,39 +43,58 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
       );
       _startDate = med.startDate;
       _endDate = med.endDate;
-      _dosage = int.tryParse(med.dosage ?? '1') ?? 1; // Preenche com a dosagem armazenada
+      _dosage =
+          int.tryParse(med.dosage ?? '1') ??
+          1; // Preenche com a dosagem armazenada
     }
   }
 
   void _addTime() async {
     final hours = List.generate(24, (i) => i);
 
-    final selected = await showDialog<int>(context: context, builder: (ctx) {
-      return Dialog(
-        child: SizedBox(
-          width: MediaQuery.of(ctx).size.width * 0.5,
-          height: MediaQuery.of(ctx).size.height * 0.3,
-          child: SimpleDialog(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            titlePadding: EdgeInsets.zero,
-            title: Container(
-              width: double.infinity,
-              color: Colors.blue,
-              padding: const EdgeInsets.all(8),
-              child: const Center(
-                child: Text("Selecione o horário", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          child: SizedBox(
+            width: MediaQuery.of(ctx).size.width * 0.5,
+            height: MediaQuery.of(ctx).size.height * 0.3,
+            child: SimpleDialog(
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 8,
+                vertical: 4,
               ),
+              titlePadding: EdgeInsets.zero,
+              title: Container(
+                width: double.infinity,
+                color: Colors.blue,
+                padding: const EdgeInsets.all(8),
+                child: const Center(
+                  child: Text(
+                    "Selecione o horário",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ),
+              ),
+              children:
+                  hours
+                      .map(
+                        (h) => SimpleDialogOption(
+                          onPressed: () => Navigator.pop(ctx, h),
+                          child: Center(
+                            child: Text(
+                              '${h.toString().padLeft(2, '0')}:00:00',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
             ),
-            children: hours
-                .map((h) => SimpleDialogOption(
-                      onPressed: () => Navigator.pop(ctx, h),
-                      child: Center(child: Text('${h.toString().padLeft(2, '0')}:00:00', style: const TextStyle(fontSize: 16))),
-                    ))
-                .toList(),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     if (selected != null) {
       setState(() {
@@ -97,17 +118,27 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
 
     setState(() => _saving = true);
 
+    _log.d(
+      '[MFP] - Salvando medicação: $name, Dosagem: $_dosage, Dias: $_selectedDays, Horários: $_times, Início: $_startDate, Término: $_endDate',
+    );
+
     final med = Medication(
       id: widget.medication?.id,
       name: name,
-      dosage: _dosage.toString(), // Convertendo a dosagem para string
+      dosage: _dosage.toString(),
       days: _selectedDays.toList(),
-      schedules: _times
-          .map((t) => "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}")
-          .toList(),
+      schedules:
+          _times
+              .map(
+                (t) =>
+                    "${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}",
+              )
+              .toList(),
       startDate: _startDate,
       endDate: _endDate,
     );
+
+    _log.d('[MFP] - Medicação a ser salva: $med');
 
     await widget.onSave(med);
     if (mounted) Navigator.pop(context);
@@ -154,22 +185,23 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
             const SizedBox(height: 16),
             Wrap(
               spacing: 8,
-              children: _weekdays.map((dia) {
-                final selected = _selectedDays.contains(dia);
-                return FilterChip(
-                  label: Text(dia),
-                  selected: selected,
-                  onSelected: (val) {
-                    setState(() {
-                      if (val) {
-                        _selectedDays.add(dia);
-                      } else {
-                        _selectedDays.remove(dia);
-                      }
-                    });
-                  },
-                );
-              }).toList(),
+              children:
+                  _weekdays.map((dia) {
+                    final selected = _selectedDays.contains(dia);
+                    return FilterChip(
+                      label: Text(dia),
+                      selected: selected,
+                      onSelected: (val) {
+                        setState(() {
+                          if (val) {
+                            _selectedDays.add(dia);
+                          } else {
+                            _selectedDays.remove(dia);
+                          }
+                        });
+                      },
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 16),
             ..._times.map(

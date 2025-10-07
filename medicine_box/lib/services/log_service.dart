@@ -8,6 +8,12 @@ class FileLogOutput extends LogOutput {
   Future<void> init() async {
     final dir = await getApplicationDocumentsDirectory();
     _file = File('${dir.path}/app_logs.txt');
+
+    if (await _file.exists()) {
+      await _file.writeAsString('');
+    } else {
+      await _file.create(recursive: true);
+    }
   }
 
   @override
@@ -39,8 +45,10 @@ class LogService {
         colors: false,
         dateTimeFormat: DateTimeFormat.onlyTimeAndSinceStart,
       ),
-      output: fileOutput,
+      output: MultiOutput([ConsoleOutput(), fileOutput]),
       level: Level.debug,
     );
+
+    logger.i('Serviço de log inicializado em: ${fileOutput._file.path}');
   }
 }
