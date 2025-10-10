@@ -11,6 +11,7 @@ class MedicationScheduleService {
     String medicationId,
     DateTime startDate,
     DateTime endDate,
+    int dosage,
     List<String> days,
     List<String> schedules,
   ) async {
@@ -71,6 +72,7 @@ class MedicationScheduleService {
               'status': 'Scheduled',
               'created_at': DateTime.now().toUtc().toIso8601String(),
               'scheduled_at': scheduledAt.toUtc().toIso8601String(),
+              'dosage': dosage,
             });
           }
         }
@@ -91,6 +93,7 @@ class MedicationScheduleService {
     String medicationId,
     DateTime startDate,
     DateTime endDate,
+    int dosage,
     List<String> days,
     List<String> schedules,
   ) async {
@@ -111,6 +114,7 @@ class MedicationScheduleService {
         medicationId,
         startDate,
         endDate,
+        dosage,
         days,
         schedules,
       );
@@ -187,6 +191,7 @@ class MedicationScheduleService {
                   'user_id': e['user_id'],
                   'medication_id': e['medication_id'],
                   'scheduled_at': e['scheduled_at'],
+                  'dosage': e['dosage'],
                   'taken_at': e['taken_at'],
                   'status': e['status'],
                   'created_at': e['created_at'],

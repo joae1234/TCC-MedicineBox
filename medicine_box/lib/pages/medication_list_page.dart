@@ -137,13 +137,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
               type: MqttActionTypeEnum.activateAlarm,
               source: '',
               target: '',
-              metadata: {
-                "userId": _nextMedAlarm!.userId,
-                "medications":
-                    _nextMedAlarm!.medicationAlarmDetails
-                        .map((e) => e.toMap())
-                        .toList(),
-              },
+              metadata: {},
             ).toJsonString();
         _log.d("[MLP] - Enviando comando MQTT: $msg");
 
@@ -204,6 +198,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
                   id: e.id,
                   medicationId: e.medicationId,
                   name: listMedNames[idx],
+                  dosage: e.dosage,
                 );
               }).toList(),
           scheduled_at: nextMedAlarmResult[0].scheduled_at,
@@ -258,6 +253,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
       med.id ?? '',
       newMed.startDate ?? DateTime.now(),
       newMed.endDate ?? DateTime.now().add(const Duration(days: 30)),
+      newMed.dosage ?? 1,
       newMed.days,
       newMed.schedules,
     );
@@ -272,6 +268,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
       medication.id ?? '',
       medication.startDate ?? DateTime.now(),
       medication.endDate ?? DateTime.now().add(const Duration(days: 30)),
+      medication.dosage ?? 1,
       medication.days,
       medication.schedules,
     );
@@ -326,7 +323,10 @@ class _MedicationListPageState extends State<MedicationListPage> {
                         Expanded(
                           child: Text(
                             alarm.medicationAlarmDetails
-                                .map((d) => d.name)
+                                .map(
+                                  (e) =>
+                                      '${e.name} - ${e.dosage ?? 0} comprimidos',
+                                )
                                 .join('\n'),
                             style: const TextStyle(
                               fontSize: 18,

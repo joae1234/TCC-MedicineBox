@@ -43,8 +43,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
       );
       _startDate = med.startDate;
       _endDate = med.endDate;
-      _dosage =
-          int.tryParse(med.dosage ?? '1') ?? 1; // Preenche com a dosagem armazenada
+      _dosage = med.dosage ?? 1;
     }
   }
 
@@ -56,94 +55,120 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
     final minutes = [0, 15, 30, 45];
 
     // Exibindo o diálogo para selecionar hora, minuto e AM/PM
-    final selected = await showDialog<Map<String, dynamic>>(context: context, builder: (ctx) {
-      int selectedHour = hours[0];
-      int selectedMinute = minutes[0];
-      bool isAM = true;
+    final selected = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (ctx) {
+        int selectedHour = hours[0];
+        int selectedMinute = minutes[0];
+        bool isAM = true;
 
-      return StatefulBuilder(
-        builder: (ctx, setStateDialog) {
-          return Dialog(
-            child: SizedBox(
-              width: MediaQuery.of(ctx).size.width * 0.8,
-              height: MediaQuery.of(ctx).size.height * 0.4,
-              child: SimpleDialog(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                titlePadding: EdgeInsets.zero,
-                title: Container(
-                  width: double.infinity,
-                  color: Colors.blue,
-                  padding: const EdgeInsets.all(8),
-                  child: const Center(
-                    child: Text("Selecione o horário", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        return StatefulBuilder(
+          builder: (ctx, setStateDialog) {
+            return Dialog(
+              child: SizedBox(
+                width: MediaQuery.of(ctx).size.width * 0.8,
+                height: MediaQuery.of(ctx).size.height * 0.4,
+                child: SimpleDialog(
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
                   ),
+                  titlePadding: EdgeInsets.zero,
+                  title: Container(
+                    width: double.infinity,
+                    color: Colors.blue,
+                    padding: const EdgeInsets.all(8),
+                    child: const Center(
+                      child: Text(
+                        "Selecione o horário",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                  ),
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Seletor de hora
+                        DropdownButton<int>(
+                          value: selectedHour,
+                          items:
+                              hours.map((h) {
+                                return DropdownMenuItem<int>(
+                                  value: h,
+                                  child: Text(h.toString().padLeft(2, '0')),
+                                );
+                              }).toList(),
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              selectedHour = value!;
+                            });
+                          },
+                        ),
+                        const Text(":", style: TextStyle(fontSize: 18)),
+                        // Seletor de minuto
+                        DropdownButton<int>(
+                          value: selectedMinute,
+                          items:
+                              minutes.map((m) {
+                                return DropdownMenuItem<int>(
+                                  value: m,
+                                  child: Text(m.toString().padLeft(2, '0')),
+                                );
+                              }).toList(),
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              selectedMinute = value!;
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 16),
+                        // Seletor de AM/PM
+                        DropdownButton<bool>(
+                          value: isAM,
+                          items: [
+                            DropdownMenuItem<bool>(
+                              value: true,
+                              child: Text("AM"),
+                            ),
+                            DropdownMenuItem<bool>(
+                              value: false,
+                              child: Text("PM"),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            setStateDialog(() {
+                              isAM = value!;
+                            });
+                          },
+                        ),
+                      ],
+                    ),
+                    SimpleDialogOption(
+                      onPressed:
+                          () => Navigator.pop(ctx, {
+                            'hour': selectedHour,
+                            'minute': selectedMinute,
+                            'isAM': isAM,
+                          }),
+                      child: const Center(
+                        child: Text(
+                          'Confirmar',
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Seletor de hora
-                      DropdownButton<int>(
-                        value: selectedHour,
-                        items: hours.map((h) {
-                          return DropdownMenuItem<int>(
-                            value: h,
-                            child: Text(h.toString().padLeft(2, '0')),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            selectedHour = value!;
-                          });
-                        },
-                      ),
-                      const Text(":", style: TextStyle(fontSize: 18)),
-                      // Seletor de minuto
-                      DropdownButton<int>(
-                        value: selectedMinute,
-                        items: minutes.map((m) {
-                          return DropdownMenuItem<int>(
-                            value: m,
-                            child: Text(m.toString().padLeft(2, '0')),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            selectedMinute = value!;
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 16),
-                      // Seletor de AM/PM
-                      DropdownButton<bool>(
-                        value: isAM,
-                        items: [
-                          DropdownMenuItem<bool>(value: true, child: Text("AM")),
-                          DropdownMenuItem<bool>(value: false, child: Text("PM")),
-                        ],
-                        onChanged: (value) {
-                          setStateDialog(() {
-                            isAM = value!;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                  SimpleDialogOption(
-                    onPressed: () => Navigator.pop(ctx, {
-                      'hour': selectedHour,
-                      'minute': selectedMinute,
-                      'isAM': isAM,
-                    }),
-                    child: const Center(child: Text('Confirmar', style: TextStyle(fontSize: 16))),
-                  ),
-                ],
               ),
-            ),
-          );
-        },
-      );
-    });
+            );
+          },
+        );
+      },
+    );
 
     if (selected != null) {
       // Converte hora de 12 horas para 24 horas
@@ -180,7 +205,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
     final med = Medication(
       id: widget.medication?.id,
       name: name,
-      dosage: _dosage.toString(),
+      dosage: _dosage.toInt(),
       days: _selectedDays.toList(),
       schedules:
           _times
