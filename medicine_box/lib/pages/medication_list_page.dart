@@ -9,6 +9,7 @@ import 'package:medicine_box/models/next_user_alarm.dart';
 import 'package:medicine_box/models/profile_model.dart';
 import 'package:medicine_box/services/log_service.dart';
 import 'package:medicine_box/services/medication_schedule_service.dart';
+// import 'package:medicine_box/services/native_alarm_service.dart';
 import 'package:medicine_box/services/profile_service.dart';
 import '../models/medication.dart';
 import '../services/medication_service.dart';
@@ -192,7 +193,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
 
     if (_nextMedAlarm == null) return;
 
-    final diff = now.difference(_nextMedAlarm!.scheduled_at);
+    final diff = now.difference(_nextMedAlarm!.scheduledAt);
 
     if (diff.abs() < const Duration(minutes: 1)) {
       _log.i(
@@ -233,7 +234,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
 
       _nextMedAlarm == null
           ? nextMedAlarmResult = await _medScheduleSvc.getUserNextMedication(
-            _nextMedAlarm?.scheduled_at,
+            _nextMedAlarm?.scheduledAt,
           )
           : nextMedAlarmResult = null;
 
@@ -275,12 +276,24 @@ class _MedicationListPageState extends State<MedicationListPage> {
                   dosage: e.dosage,
                 );
               }).toList(),
-          scheduled_at: nextMedAlarmResult[0].scheduled_at,
+          scheduledAt: nextMedAlarmResult[0].scheduledAt,
         );
+        _log.d("[MLP] - Próximo alarme carregado: $_nextMedAlarm");
+
+        // if (_nextMedAlarm != null &&
+        //     _nextMedAlarm!.scheduledAt.isAfter(DateTime.now().toLocal())) {
+        //   _log.i(
+        //     "[MLP] - Agendando notificação local para o próximo alarme: $_nextMedAlarm",
+        //   );
+
+        //   final scheduledDate = _nextMedAlarm!.scheduledAt.toLocal();
+
+        //   await NativeAlarmService.scheduleAlarm(scheduledDate);
+        // }
       }
 
       if (_nextMedAlarm != null) {
-        final diff = DateTime.now().difference(_nextMedAlarm!.scheduled_at);
+        final diff = DateTime.now().difference(_nextMedAlarm!.scheduledAt);
 
         if (diff > const Duration(minutes: 10)) {
           await _changeMedicationStatus(MqttAlarmStatusEnum.missed);
@@ -410,7 +423,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
                         const Icon(Icons.access_time, size: 18),
                         const SizedBox(width: 6),
                         Text(
-                          _formatDateTime(alarm.scheduled_at),
+                          _formatDateTime(alarm.scheduledAt),
                           style: const TextStyle(fontSize: 14),
                         ),
                       ],
