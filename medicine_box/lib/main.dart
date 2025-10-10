@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 import 'pages/welcome_page.dart';
 
 Future<void> main() async {
@@ -13,6 +14,10 @@ Future<void> main() async {
   );
   final logService = LogService();
   await logService.init();
+
+  tz.initializeTimeZones();
+
+  logService.logger.i('Fuso horário local: ${tz.local.name}');
   runApp(const MyApp());
 }
 
@@ -40,7 +45,6 @@ class MyApp extends StatelessWidget {
           fillColor: Colors.grey[100],
         ),
       ),
-      // Mostra WelcomePage como primeira tela
       home: const WelcomePage(),
       debugShowCheckedModeBanner: false,
     );
