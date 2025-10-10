@@ -2,7 +2,7 @@ class MedicationHistory {
   final String id;
   final String userId;
   final String medicationId;
-  final DateTime? takenAt;
+  final DateTime? lastStatusUpdate;
   final String status;
   final DateTime scheduled_at;
   final DateTime created_at;
@@ -12,7 +12,7 @@ class MedicationHistory {
     required this.id,
     required this.userId,
     required this.medicationId,
-    required this.takenAt,
+    required this.lastStatusUpdate,
     required this.scheduled_at,
     required this.created_at,
     required this.dosage,
@@ -29,7 +29,7 @@ class MedicationHistory {
         id: map['id'],
         userId: map['user_id'],
         medicationId: map['medication_id'],
-        takenAt: _toDateOrNull(map['taken_at']),
+        lastStatusUpdate: _toDateOrNull(map['last_status_update']),
         status: map['status'],
         scheduled_at: _toDate(map['scheduled_at']),
         created_at: _toDate(map['created_at']),
@@ -40,7 +40,7 @@ class MedicationHistory {
     'id': id.toString(),
     'user_id': userId.toString(),
     'medication_id': medicationId.toString(),
-    'taken_at': takenAt?.toIso8601String(),
+    'last_status_update': lastStatusUpdate?.toIso8601String(),
     'status': status.toString(),
     'scheduled_at': scheduled_at.toIso8601String(),
     'created_at': created_at.toIso8601String(),

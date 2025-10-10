@@ -21,10 +21,10 @@ class MedicationHistoryPage extends StatelessWidget {
           return (o as dynamic).scheduled_at;
         case 'scheduledAt':
           return (o as dynamic).scheduledAt;
-        case 'taken_at':
-          return (o as dynamic).taken_at;
-        case 'takenAt':
-          return (o as dynamic).takenAt;
+        case 'last_status_update':
+          return (o as dynamic).last_status_update;
+        case 'lastStatusUpdate':
+          return (o as dynamic).lastStatusUpdate;
         case 'status':
           return (o as dynamic).status;
         case 'delay_secs':
@@ -96,116 +96,138 @@ class MedicationHistoryPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Histórico de Medicações')),
-      body: history.isEmpty
-          ? const Center(child: Text('Nenhum histórico disponível.'))
-          : ListView.builder(
-              itemCount: history.length,
-              itemBuilder: (_, i) {
-                final h = history[i];
+      body:
+          history.isEmpty
+              ? const Center(child: Text('Nenhum histórico disponível.'))
+              : ListView.builder(
+                itemCount: history.length,
+                itemBuilder: (_, i) {
+                  final h = history[i];
 
-                final medId =
-                    _getStringNullable(h, 'medication_id', 'medicationId');
-                final name = medNames[medId ?? ''] ?? 'Desconhecido';
+                  final medId = _getStringNullable(
+                    h,
+                    'medication_id',
+                    'medicationId',
+                  );
+                  final name = medNames[medId ?? ''] ?? 'Desconhecido';
 
-                final scheduled =
-                    _getDate(h, 'scheduled_at', 'scheduledAt');
-                final taken = _getDate(h, 'taken_at', 'takenAt');
-                final status = _getString(h, 'status', 'status', def: 'Scheduled');
-                final delaySecs =
-                    _getInt(h, 'delay_secs', 'delaySecs', def: 0);
+                  final scheduled = _getDate(h, 'scheduled_at', 'scheduledAt');
+                  final taken = _getDate(
+                    h,
+                    'last_status_update',
+                    'lastStatusUpdate',
+                  );
+                  final status = _getString(
+                    h,
+                    'status',
+                    'status',
+                    def: 'Scheduled',
+                  );
+                  final delaySecs = _getInt(
+                    h,
+                    'delay_secs',
+                    'delaySecs',
+                    def: 0,
+                  );
 
-                return Card(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Título + chip de status
-                        Row(
-                          children: [
-                            const Icon(Icons.schedule, size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                name,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Título + chip de status
+                          Row(
+                            children: [
+                              const Icon(Icons.schedule, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _statusColor(status).withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(999),
-                                border: Border.all(
-                                  color: _statusColor(status),
-                                  width: 0.8,
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
                                 ),
-                              ),
-                              child: Text(
-                                status,
-                                style: TextStyle(
-                                  color: _statusColor(status),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
+                                decoration: BoxDecoration(
+                                  color: _statusColor(status).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(999),
+                                  border: Border.all(
+                                    color: _statusColor(status),
+                                    width: 0.8,
+                                  ),
                                 ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-
-                        // Agendado
-                        Row(
-                          children: [
-                            const Icon(Icons.alarm, size: 16),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Agendado: ${_fmt(scheduled)}',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-
-                        // Tomado + atraso
-                        Row(
-                          children: [
-                            const Icon(Icons.check_circle_outline, size: 16),
-                            const SizedBox(width: 6),
-                            Text(
-                              taken != null
-                                  ? 'Tomado: ${_fmt(taken)}'
-                                  : 'Tomado: --',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            if (taken != null && delaySecs > 0) ...[
-                              const SizedBox(width: 10),
-                              Text(
-                                'Atraso: ${delaySecs ~/ 60} min',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontStyle: FontStyle.italic,
+                                child: Text(
+                                  status,
+                                  style: TextStyle(
+                                    color: _statusColor(status),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
-                          ],
-                        ),
-                      ],
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Agendado
+                          Row(
+                            children: [
+                              const Icon(Icons.alarm, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Agendado: ${_fmt(scheduled)}',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+
+                          // Tomado + atraso
+                          Row(
+                            children: [
+                              const Icon(Icons.check_circle_outline, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                taken != null
+                                    ? 'Tomado: ${_fmt(taken)}'
+                                    : 'Tomado: --',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              if (taken != null && delaySecs > 0) ...[
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Atraso: ${delaySecs ~/ 60} min',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
     );
   }
 }
