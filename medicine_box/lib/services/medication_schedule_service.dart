@@ -205,7 +205,7 @@ class MedicationScheduleService {
     }
   }
 
-  Future<void>? updateMedicationStatus(
+  Future updateMedicationStatus(
     String id,
     String status,
     DateTime? takenAt,
@@ -232,6 +232,36 @@ class MedicationScheduleService {
         '[MSS] - Atualização do status da medicação finalizada em ${stopWatch.elapsedMilliseconds} ms',
       );
       throw Exception('Erro ao atualizar o status da medicação');
+    }
+  }
+
+  /// Cancela todos os agendamentos futuros de uma medicação específica
+  Future cancelAllMedicationSchedules(String id) async {
+    try {
+      final user = _db.auth.currentUser;
+      if (user == null) {
+        log.e('[MS] - Usuário não autenticado ao apagar medicação');
+        throw Exception('Usuário não autenticado');
+      }
+
+      log.i('[MS] - Cancelando futuros agendamentos dessa medicação');
+
+      final result = await _db
+          .from('medication_history')
+          .update({'status': 'Canceled'})
+          .eq('user_id', user.id)
+          .eq('medication_id', id)
+          .eq('status', 'Scheduled');
+
+      log.d(
+        '[MS] - Resultado da operação de cancelamento dos agendamentos: $result',
+      );
+    } catch (e) {
+      log.e(
+        '[MSS] - Erro ao cancelar todos os agendamentos de medicação',
+        error: e,
+      );
+      throw Exception('Erro ao cancelar todos os agendamentos de medicação');
     }
   }
 }
