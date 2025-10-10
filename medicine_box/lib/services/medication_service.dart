@@ -138,7 +138,7 @@ class MedicationService {
     }
   }
 
-  /// Cria ou atualiza uma medicação (upsert)
+  /// Cria uma medicação (upsert)
   Future<BaseRequestResult<Medication>> upsert(Medication med) async {
     try {
       final user = _db.auth.currentUser;
@@ -146,8 +146,9 @@ class MedicationService {
         _log.e('[MS] - Usuário não autenticado ao buscar todas as medicações');
         throw Exception('Usuário não autenticado');
       }
+
       _log.i(
-        '[MS] - Criando ou atualizando medicação ${med.toMap()} para o usuário: ${user.id}',
+        '[MS] - Criando nova medicação ${med.toMap()} para o usuário: ${user.id}',
       );
 
       final payload = med.toMap()..['user_id'] = user.id;
@@ -160,6 +161,42 @@ class MedicationService {
     } catch (e) {
       _log.e('[MS] - Erro ao criar ou atualizar medicação', error: e);
       throw Exception('Erro ao criar ou atualizar medicação: $e');
+    }
+  }
+
+  Future<Medication> update(Medication med) async {
+    try {
+      final user = _db.auth.currentUser;
+      if (user == null) {
+        _log.e('[MS] - Usuário não autenticado ao atualizar medicação');
+        throw Exception('Usuário não autenticado');
+      }
+
+      if (med.id == null) {
+        _log.e('[MS] - ID da medicação é nulo ao atualizar medicação');
+        throw Exception('ID da medicação é nulo');
+      }
+
+      _log.i(
+        '[MS] - Atualizando medicação ${med.id} para o usuário: ${user.id}',
+      );
+
+      final payload = med.toMap()..['user_id'] = user.id;
+
+      final result =
+          await _db
+              .from('medications')
+              .update(payload)
+              .eq('id', med.id)
+              .select()
+              .single();
+
+      _log.d('[MS] - Resultado da operação de atualização: $result');
+
+      return Medication.fromMap(result);
+    } catch (e) {
+      _log.e('[MS] - Erro ao atualizar medicação', error: e);
+      throw Exception('Erro ao atualizar medicação: $e');
     }
   }
 

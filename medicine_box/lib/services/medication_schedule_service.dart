@@ -21,6 +21,10 @@ class MedicationScheduleService {
         throw Exception('Usuário não autenticado.');
       }
 
+      log.i(
+        '[MSS] - Gerando alertas para o medicamento $medicationId do usuário ${user.id}',
+      );
+
       final dayMapping = {
         "Seg": DateTime.monday,
         "Ter": DateTime.tuesday,
@@ -80,6 +84,42 @@ class MedicationScheduleService {
     } catch (e) {
       log.e('[MSS] - Erro ao gerar os alertas para este medicamento', error: e);
       throw Exception('Erro ao gerar os alertas para este medicamento');
+    }
+  }
+
+  Future<void> updateMedicationSchedule(
+    String medicationId,
+    DateTime startDate,
+    DateTime endDate,
+    List<String> days,
+    List<String> schedules,
+  ) async {
+    try {
+      final user = _db.auth.currentUser;
+      if (user == null) {
+        log.e('[MSS] - Erro de usuário não autenticado');
+        throw Exception('Usuário não autenticado.');
+      }
+
+      log.i(
+        '[MSS] - Atualizando alertas para o medicamento $medicationId do usuário ${user.id}',
+      );
+
+      await cancelAllMedicationSchedules(medicationId);
+
+      await upsertMedicationSchedule(
+        medicationId,
+        startDate,
+        endDate,
+        days,
+        schedules,
+      );
+    } catch (e) {
+      log.e(
+        '[MSS] - Erro ao atualizar os alertas para este medicamento',
+        error: e,
+      );
+      throw Exception('Erro ao atualizar os alertas para este medicamento');
     }
   }
 
