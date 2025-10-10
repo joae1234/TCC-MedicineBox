@@ -265,6 +265,20 @@ class _MedicationListPageState extends State<MedicationListPage> {
     await _reload();
   }
 
+  Future<void> _updateMedication(Medication medication) async {
+    await _medSvc.update(medication);
+
+    await _medScheduleSvc.updateMedicationSchedule(
+      medication.id ?? '',
+      medication.startDate ?? DateTime.now(),
+      medication.endDate ?? DateTime.now().add(const Duration(days: 30)),
+      medication.days,
+      medication.schedules,
+    );
+
+    await _reload();
+  }
+
   @override
   void dispose() {
     _checkTimer?.cancel();
@@ -405,7 +419,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
                                     (_) => MedicationFormPage(
                                       medication: m,
                                       onSave: (updated) async {
-                                        await _medSvc.upsert(updated);
+                                        await _updateMedication(updated);
                                         _nextMedAlarm = null;
                                         await _reload();
                                       },
