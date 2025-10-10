@@ -190,13 +190,13 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
   String _formatTime(TimeOfDay t) => t.format(context);
 
   Future<void> _submit() async {
+    setState(() => _saving = true);
+
     final name = _nameCtrl.text.trim();
     if (name.isEmpty || _selectedDays.isEmpty || _times.isEmpty) return;
 
     _startDate ??= DateTime.now().toUtc();
     _endDate ??= _startDate!.add(const Duration(days: 30));
-
-    setState(() => _saving = true);
 
     _log.d(
       '[MFP] - Salvando medicação: $name, Dosagem: $_dosage, Dias: $_selectedDays, Horários: $_times, Início: $_startDate, Término: $_endDate',
@@ -226,124 +226,150 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Nova Medicação')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          children: [
-            TextFormField(
-              controller: _nameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Nome do Medicamento',
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Adicionando o Stepper para dosagem
-            Row(
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(title: const Text('Nova Medicação')),
+          body: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ListView(
               children: [
-                const Text("Dosagem: ", style: TextStyle(fontSize: 16)),
-                IconButton(
-                  icon: const Icon(Icons.remove),
-                  onPressed: () {
-                    setState(() {
-                      if (_dosage > 1) _dosage--;
-                    });
+                TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Nome do Medicamento',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Adicionando o Stepper para dosagem
+                Row(
+                  children: [
+                    const Text("Dosagem: ", style: TextStyle(fontSize: 16)),
+                    IconButton(
+                      icon: const Icon(Icons.remove),
+                      onPressed: () {
+                        setState(() {
+                          if (_dosage > 1) _dosage--;
+                        });
+                      },
+                    ),
+                    Text("$_dosage", style: const TextStyle(fontSize: 18)),
+                    IconButton(
+                      icon: const Icon(Icons.add),
+                      onPressed: () {
+                        setState(() {
+                          _dosage++;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  children:
+                      _weekdays.map((dia) {
+                        final selected = _selectedDays.contains(dia);
+                        return FilterChip(
+                          label: Text(dia),
+                          selected: selected,
+                          onSelected: (val) {
+                            setState(() {
+                              if (val) {
+                                _selectedDays.add(dia);
+                              } else {
+                                _selectedDays.remove(dia);
+                              }
+                            });
+                          },
+                        );
+                      }).toList(),
+                ),
+                const SizedBox(height: 16),
+                ..._times.map(
+                  (t) => ListTile(
+                    title: Text(_formatTime(t)),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () => _removeTime(t),
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.access_time),
+                  label: const Text('Adicionar horário'),
+                  onPressed: _addTime,
+                ),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text("Data de início"),
+                  subtitle: Text(
+                    _startDate != null
+                        ? "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"
+                        : "Selecione a data inicial",
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now(),
+                      firstDate: DateTime.now(),
+                      lastDate: DateTime.now().toUtc().add(Duration(days: 365)),
+                    );
+                    if (picked != null) setState(() => _startDate = picked);
                   },
                 ),
-                Text("$_dosage", style: const TextStyle(fontSize: 18)),
-                IconButton(
-                  icon: const Icon(Icons.add),
-                  onPressed: () {
-                    setState(() {
-                      _dosage++;
-                    });
+                ListTile(
+                  title: const Text("Data de término"),
+                  subtitle: Text(
+                    _endDate != null
+                        ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
+                        : "Selecione a data final",
+                  ),
+                  trailing: const Icon(Icons.calendar_today),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime.now().add(Duration(days: 1)),
+                      firstDate: DateTime.now().add(Duration(days: 1)),
+                      lastDate: DateTime.now().add(Duration(days: 365)),
+                    );
+                    if (picked != null) setState(() => _endDate = picked);
                   },
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.save),
+                  label: const Text('Salvar'),
+                  onPressed: _submit,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              children:
-                  _weekdays.map((dia) {
-                    final selected = _selectedDays.contains(dia);
-                    return FilterChip(
-                      label: Text(dia),
-                      selected: selected,
-                      onSelected: (val) {
-                        setState(() {
-                          if (val) {
-                            _selectedDays.add(dia);
-                          } else {
-                            _selectedDays.remove(dia);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-            ),
-            const SizedBox(height: 16),
-            ..._times.map(
-              (t) => ListTile(
-                title: Text(_formatTime(t)),
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete),
-                  onPressed: () => _removeTime(t),
-                ),
-              ),
-            ),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.access_time),
-              label: const Text('Adicionar horário'),
-              onPressed: _addTime,
-            ),
-            const SizedBox(height: 16),
-            ListTile(
-              title: const Text("Data de início"),
-              subtitle: Text(
-                _startDate != null
-                    ? "${_startDate!.day}/${_startDate!.month}/${_startDate!.year}"
-                    : "Selecione a data inicial",
-              ),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().toUtc().add(Duration(days: 365)),
-                );
-                if (picked != null) setState(() => _startDate = picked);
-              },
-            ),
-            ListTile(
-              title: const Text("Data de término"),
-              subtitle: Text(
-                _endDate != null
-                    ? "${_endDate!.day}/${_endDate!.month}/${_endDate!.year}"
-                    : "Selecione a data final",
-              ),
-              trailing: const Icon(Icons.calendar_today),
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now().add(Duration(days: 1)),
-                  firstDate: DateTime.now().add(Duration(days: 1)),
-                  lastDate: DateTime.now().add(Duration(days: 365)),
-                );
-                if (picked != null) setState(() => _endDate = picked);
-              },
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              icon: const Icon(Icons.save),
-              label: const Text('Salvar'),
-              onPressed: _submit,
-            ),
-          ],
+          ),
         ),
-      ),
+
+        if (_saving)
+          Container(
+            color: Colors.blue,
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 12),
+                  Text(
+                    'Salvando medicação...',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
