@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:medicine_box/models/enum/mqtt_alarm_status_enum.dart';
 import 'package:medicine_box/models/enum/mqtt_type_action_enum.dart';
 import 'package:medicine_box/models/medication_alarm_details.dart';
 import 'package:medicine_box/models/medication_history.dart';
@@ -93,7 +94,11 @@ class _MedicationListPageState extends State<MedicationListPage> {
 
     _mqtt.alarmMessagesStream.listen((msg) async {
       try {
-        _log.i("[MLP] - Mensagem de alarme recebida do MQTT: ${msg.toJson()}");
+        _log.i(
+          "[MLP] - Mensagem sobre status do alarme recebida do MQTT: ${msg.toJson()}",
+        );
+
+        await _alarmStatusMessageHandler(msg);
       } catch (e) {
         _log.e(
           "[MLP] - Erro ao processar mensagem de alarme recebida do MQTT",
@@ -101,6 +106,75 @@ class _MedicationListPageState extends State<MedicationListPage> {
         );
       }
     });
+  }
+
+  Future _alarmStatusMessageHandler(MqttActionMessage msg) async {
+    _log.d("[MLP] - Processando mensagem de status do alarme: ${msg.toJson()}");
+    if (msg.type != MqttActionTypeEnum.alarmStatus) {
+      _log.w(
+        "[MLP] - Mensagem recebida não é do tipo esperado (alarmStatus). Ignorando...",
+      );
+      return;
+    }
+
+    final messageStatus = msg.metadata['status'] as String?;
+    if (messageStatus == null) {
+      _log.w(
+        "[MLP] - Status do alarme não encontrado na mensagem. Ignorando...",
+      );
+      return;
+    }
+
+    _log.d("[MLP] - Status do alarme recebido da mensagem: $messageStatus");
+
+    final status = MqttAlarmStatusEnum.values.firstWhere(
+      (e) => e.action == messageStatus,
+      orElse: () => MqttAlarmStatusEnum.unknown,
+    );
+
+    _log.d("[MLP] - Status do alarme mapeado: ${status.action}");
+
+    switch (status) {
+      case MqttAlarmStatusEnum.taken:
+        _log.i(
+          "[MLP] - Alarme ${_nextMedAlarm?.medicationAlarmDetails} tomado.",
+        );
+        await _changeMedicationStatus(status);
+        _nextMedAlarm = null;
+        await _getNextMedication();
+        break;
+      case MqttAlarmStatusEnum.missed:
+        _log.i(
+          "[MLP] - Alarme ${_nextMedAlarm?.medicationAlarmDetails} perdido.",
+        );
+        await _changeMedicationStatus(status);
+        _nextMedAlarm = null;
+        await _getNextMedication();
+        break;
+      default:
+        _log.w("[MLP] - Status do alarme é desconhecido. Ignorando...");
+        break;
+    }
+  }
+
+  Future _changeMedicationStatus(MqttAlarmStatusEnum status) async {
+    _log.i("[MLP] - Alterando status do alarme $_nextMedAlarm para: $status");
+    if (_nextMedAlarm == null) {
+      _log.w("[MLP] - Nenhum alarme ativo no momento. Ignorando...");
+      return;
+    }
+
+    final statusValue = status.value;
+
+    _log.d("[MLP] - Status do alarme mapeado para o banco: $statusValue");
+
+    for (final medDetail in _nextMedAlarm!.medicationAlarmDetails) {
+      await _medScheduleSvc.updateMedicationStatus(
+        medDetail.id,
+        statusValue,
+        null,
+      );
+    }
   }
 
   void _startAlarmLoop() {
@@ -209,13 +283,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
         final diff = DateTime.now().difference(_nextMedAlarm!.scheduled_at);
 
         if (diff > const Duration(minutes: 10)) {
-          for (final medDetail in _nextMedAlarm!.medicationAlarmDetails) {
-            await _medScheduleSvc.updateMedicationStatus(
-              medDetail.id,
-              "Missed",
-              null,
-            );
-          }
+          await _changeMedicationStatus(MqttAlarmStatusEnum.missed);
           _nextMedAlarm = null;
           await _getNextMedication();
         }

@@ -348,26 +348,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
         ),
 
         if (_saving)
-          Container(
-            color: Colors.blue,
-            child: const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 12),
-                  Text(
-                    'Salvando medicação...',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       ],
     );
   }
