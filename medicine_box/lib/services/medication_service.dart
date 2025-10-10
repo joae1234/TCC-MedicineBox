@@ -108,7 +108,7 @@ class MedicationService {
         throw Exception('Usuário não autenticado');
       }
 
-      final now = DateTime.now().toUtc();
+      final now = DateTime.now().toLocal();
 
       final rows = await _db
           .from('medications')

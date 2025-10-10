@@ -71,7 +71,7 @@ class MedicationScheduleService {
               'taken_at': null,
               'status': 'Scheduled',
               'created_at': DateTime.now().toUtc().toIso8601String(),
-              'scheduled_at': scheduledAt.toUtc().toIso8601String(),
+              'scheduled_at': scheduledAt.toIso8601String(),
               'dosage': dosage,
             });
           }

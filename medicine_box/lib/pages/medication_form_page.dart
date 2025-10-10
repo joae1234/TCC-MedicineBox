@@ -241,7 +241,6 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Adicionando o Stepper para dosagem
                 Row(
                   children: [
                     const Text("Dosagem: ", style: TextStyle(fontSize: 16)),
@@ -314,7 +313,7 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                       context: context,
                       initialDate: DateTime.now(),
                       firstDate: DateTime.now(),
-                      lastDate: DateTime.now().toUtc().add(Duration(days: 365)),
+                      lastDate: DateTime.now().add(Duration(days: 365)),
                     );
                     if (picked != null) setState(() => _startDate = picked);
                   },

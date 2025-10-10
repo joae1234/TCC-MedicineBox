@@ -20,10 +20,9 @@ class MedicationHistory {
   });
 
   static DateTime _toDate(dynamic v) =>
-      v is DateTime ? v : DateTime.parse(v as String).toLocal();
+      v is DateTime ? v : DateTime.parse(v as String);
 
-  static DateTime? _toDateOrNull(dynamic v) =>
-      v == null ? null : _toDate(v).toLocal();
+  static DateTime? _toDateOrNull(dynamic v) => v == null ? null : _toDate(v);
 
   factory MedicationHistory.fromMap(Map<String, dynamic> map) =>
       MedicationHistory(
@@ -41,10 +40,10 @@ class MedicationHistory {
     'id': id.toString(),
     'user_id': userId.toString(),
     'medication_id': medicationId.toString(),
-    'taken_at': takenAt?.toUtc().toIso8601String(),
+    'taken_at': takenAt?.toIso8601String(),
     'status': status.toString(),
-    'scheduled_at': scheduled_at.toUtc().toIso8601String(),
-    'created_at': created_at.toUtc().toIso8601String(),
+    'scheduled_at': scheduled_at.toIso8601String(),
+    'created_at': created_at.toIso8601String(),
     'dosage': dosage,
   };
 }
