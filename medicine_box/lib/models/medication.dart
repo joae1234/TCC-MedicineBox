@@ -1,7 +1,7 @@
 class Medication {
   final String? id;
   final String name;
-  final String? dosage;
+  final int? dosage;
   final List<String> days;
   final List<String> schedules;
   final DateTime? startDate;
@@ -10,7 +10,7 @@ class Medication {
   Medication({
     this.id,
     required this.name,
-    this.dosage,
+    required this.dosage,
     required this.days,
     required this.schedules,
     this.startDate,
@@ -18,14 +18,15 @@ class Medication {
   });
 
   factory Medication.fromMap(Map<String, dynamic> map) => Medication(
-        id: map['id'] as String?,
-        name: map['name'] as String,
-        dosage: map['dosage'] as String?,
-        days: List<String>.from(map['days'] as List<dynamic>),
-        schedules: List<String>.from(map['schedules'] as List<dynamic>),
-        startDate: map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
-        endDate: map['end_date'] != null ? DateTime.parse(map['end_date']) : null,
-      );
+    id: map['id'] as String?,
+    name: map['name'] as String,
+    dosage: map['dosage'] as int,
+    days: List<String>.from(map['days'] as List<dynamic>),
+    schedules: List<String>.from(map['schedules'] as List<dynamic>),
+    startDate:
+        map['start_date'] != null ? DateTime.parse(map['start_date']) : null,
+    endDate: map['end_date'] != null ? DateTime.parse(map['end_date']) : null,
+  );
 
   Map<String, dynamic> toMap() {
     final m = <String, dynamic>{

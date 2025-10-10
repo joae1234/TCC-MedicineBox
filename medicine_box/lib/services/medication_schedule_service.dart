@@ -11,6 +11,7 @@ class MedicationScheduleService {
     String medicationId,
     DateTime startDate,
     DateTime endDate,
+    int dosage,
     List<String> days,
     List<String> schedules,
   ) async {
@@ -67,10 +68,11 @@ class MedicationScheduleService {
             inserts.add({
               'medication_id': medicationId,
               'user_id': user.id,
-              'taken_at': null,
+              'last_status_update': null,
               'status': 'Scheduled',
               'created_at': DateTime.now().toUtc().toIso8601String(),
-              'scheduled_at': scheduledAt.toUtc().toIso8601String(),
+              'scheduled_at': scheduledAt.toIso8601String(),
+              'dosage': dosage,
             });
           }
         }
@@ -91,6 +93,7 @@ class MedicationScheduleService {
     String medicationId,
     DateTime startDate,
     DateTime endDate,
+    int dosage,
     List<String> days,
     List<String> schedules,
   ) async {
@@ -111,6 +114,7 @@ class MedicationScheduleService {
         medicationId,
         startDate,
         endDate,
+        dosage,
         days,
         schedules,
       );
@@ -187,7 +191,8 @@ class MedicationScheduleService {
                   'user_id': e['user_id'],
                   'medication_id': e['medication_id'],
                   'scheduled_at': e['scheduled_at'],
-                  'taken_at': e['taken_at'],
+                  'dosage': e['dosage'],
+                  'last_status_update': e['last_status_update'],
                   'status': e['status'],
                   'created_at': e['created_at'],
                 }),
@@ -248,7 +253,7 @@ class MedicationScheduleService {
   Future updateMedicationStatus(
     String id,
     String status,
-    DateTime? takenAt,
+    DateTime? lastStatusUpdate,
   ) async {
     Stopwatch stopWatch = Stopwatch();
     stopWatch.start();
@@ -258,7 +263,7 @@ class MedicationScheduleService {
           .from('medication_history')
           .update({
             'status': status,
-            'taken_at': takenAt?.toUtc().toIso8601String(),
+            'last_status_update': lastStatusUpdate?.toUtc().toIso8601String(),
           })
           .eq('id', id);
       stopWatch.stop();
@@ -341,8 +346,10 @@ extension MedicationScheduleServiceHistory on MedicationScheduleService {
         if (m['scheduled_at'] is String) {
           m['scheduled_at'] = DateTime.parse(m['scheduled_at'] as String);
         }
-        if (m['taken_at'] is String) {
-          m['taken_at'] = DateTime.tryParse(m['taken_at'] as String);
+        if (m['last_status_update'] is String) {
+          m['last_status_update'] = DateTime.tryParse(
+            m['last_status_update'] as String,
+          );
         }
 
         // Status default

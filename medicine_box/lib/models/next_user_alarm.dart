@@ -27,6 +27,6 @@ class NextUserAlarm {
     'user_id': userId.toString(),
     'medication_alarm_details':
         medicationAlarmDetails.map((item) => item.toMap()).toList(),
-    'scheduled_at': scheduled_at.toUtc().toIso8601String(),
+    'scheduled_at': scheduled_at.toIso8601String(),
   };
 }
