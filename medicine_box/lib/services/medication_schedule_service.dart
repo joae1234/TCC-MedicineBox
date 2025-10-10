@@ -1,7 +1,9 @@
 import 'package:medicine_box/models/base_request_result.dart';
+import 'package:medicine_box/models/enum/mqtt_alarm_status_enum.dart';
 import 'package:medicine_box/models/medication_history.dart';
 import 'package:medicine_box/services/log_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 class MedicationScheduleService {
   final SupabaseClient _db = Supabase.instance.client;
@@ -65,18 +67,33 @@ class MedicationScheduleService {
               minute,
             );
 
+            if (scheduledAt.isBefore(DateTime.now())) {
+              continue;
+            }
+
+            final timezone = tz.local.name;
+
+            log.d(
+              '[MSS] - Agendamento criado para ${scheduledAt.toIso8601String()} com timezone $timezone',
+            );
+
             inserts.add({
               'medication_id': medicationId,
               'user_id': user.id,
               'last_status_update': null,
               'status': 'Scheduled',
               'created_at': DateTime.now().toUtc().toIso8601String(),
-              'scheduled_at': scheduledAt.toIso8601String(),
+              'scheduled_at': scheduledAt.toUtc().toIso8601String(),
               'dosage': dosage,
+              'timezone': timezone,
             });
           }
         }
       }
+
+      log.d(
+        '[MSS] - Inserções a serem feitas na tabela medication_history: $inserts',
+      );
 
       if (inserts.isNotEmpty) {
         await _db.from('medication_history').upsert(inserts);
@@ -183,6 +200,13 @@ class MedicationScheduleService {
         return null;
       }
 
+      for (final item in response) {
+        final scheduledAt = DateTime.tryParse(item['scheduled_at'] as String);
+        final timezone = item['timezone'] as String?;
+
+        item['scheduled_at'] = convertUtcToOriginalLocal(scheduledAt, timezone);
+      }
+
       final List<MedicationHistory> list =
           (response as List)
               .map(
@@ -226,30 +250,39 @@ class MedicationScheduleService {
       final response =
           await _db
               .from('medication_history')
-              .select('scheduled_at')
+              .select('scheduled_at, timezone')
               .eq('user_id', user.id)
               .eq('status', 'Scheduled')
-              .gte('scheduled_at', DateTime.now().toIso8601String())
               .order('scheduled_at', ascending: true)
               .limit(1)
               .maybeSingle();
 
       log.d("[MSS] - Response do getNearestScheduledDate: $response");
 
-      if (response == null) {
+      if (response == null || response.isEmpty) {
         log.w(
           '[MSS] - Nenhum agendamento encontrado para o usuário ${user.id}',
         );
         return null;
       }
 
-      return DateTime.parse(response['scheduled_at'] as String);
+      final scheduledAt = DateTime.tryParse(response['scheduled_at'] as String);
+
+      String? timeZone = response['timezone'] as String?;
+
+      final scheduledDateTime = convertUtcToOriginalLocal(
+        scheduledAt,
+        timeZone,
+      );
+
+      return scheduledDateTime;
     } catch (e) {
       log.e('[MSS] - Erro ao buscar a data agendada mais próxima', error: e);
       throw Exception('Erro ao buscar a data agendada mais próxima: $e');
     }
   }
 
+  // Atualiza os status dos agendamentos médicos
   Future updateMedicationStatus(
     String id,
     String status,
@@ -291,9 +324,11 @@ class MedicationScheduleService {
 
       log.i('[MS] - Cancelando futuros agendamentos dessa medicação');
 
+      final cancelledStatus = MqttAlarmStatusEnum.cancelled.value;
+
       final result = await _db
           .from('medication_history')
-          .update({'status': 'Canceled'})
+          .update({'status': cancelledStatus})
           .eq('user_id', user.id)
           .eq('medication_id', id)
           .eq('status', 'Scheduled');
@@ -308,6 +343,29 @@ class MedicationScheduleService {
       );
       throw Exception('Erro ao cancelar todos os agendamentos de medicação');
     }
+  }
+
+  DateTime convertUtcToOriginalLocal(
+    DateTime? scheduledUtc,
+    String? timezoneName,
+  ) {
+    if (scheduledUtc == null) {
+      log.e('[MSS] - Data agendada inválida recebida do banco de dados');
+      throw Exception('Data agendada inválida recebida do banco de dados');
+    }
+
+    if (timezoneName == null) {
+      log.w(
+        '[MSS] - Fuso horário não definido para o agendamento do usuário, assumindo UTC',
+      );
+      timezoneName = 'UTC';
+    }
+
+    final location = tz.getLocation(timezoneName);
+
+    final tzLocal = tz.TZDateTime.from(scheduledUtc, location);
+
+    return tzLocal;
   }
 }
 
