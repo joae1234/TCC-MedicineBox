@@ -1,22 +1,26 @@
+import 'package:medicine_box/models/enum/mqtt_alarm_status_enum.dart';
+
 class MedicationHistory {
   final String id;
   final String userId;
   final String medicationId;
   final DateTime? lastStatusUpdate;
   final String status;
-  final DateTime scheduled_at;
-  final DateTime created_at;
+  final DateTime scheduledAt;
+  final DateTime createdAt;
   final int? dosage;
+  final String timezone;
 
   MedicationHistory({
     required this.id,
     required this.userId,
     required this.medicationId,
     required this.lastStatusUpdate,
-    required this.scheduled_at,
-    required this.created_at,
+    required this.status,
+    required this.scheduledAt,
+    required this.createdAt,
     required this.dosage,
-    this.status = 'Scheduled',
+    required this.timezone,
   });
 
   static DateTime _toDate(dynamic v) =>
@@ -31,9 +35,10 @@ class MedicationHistory {
         medicationId: map['medication_id'],
         lastStatusUpdate: _toDateOrNull(map['last_status_update']),
         status: map['status'],
-        scheduled_at: _toDate(map['scheduled_at']),
-        created_at: _toDate(map['created_at']),
+        scheduledAt: _toDate(map['scheduled_at']),
+        createdAt: _toDate(map['created_at']),
         dosage: map['dosage'],
+        timezone: map['timezone'] ?? 'UTC',
       );
 
   Map<String, dynamic> toMap() => {
@@ -42,8 +47,9 @@ class MedicationHistory {
     'medication_id': medicationId.toString(),
     'last_status_update': lastStatusUpdate?.toIso8601String(),
     'status': status.toString(),
-    'scheduled_at': scheduled_at.toIso8601String(),
-    'created_at': created_at.toIso8601String(),
+    'scheduled_at': scheduledAt.toIso8601String(),
+    'created_at': createdAt.toIso8601String(),
     'dosage': dosage,
+    'timezone': timezone,
   };
 }

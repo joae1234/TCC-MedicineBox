@@ -4,6 +4,8 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
+  flutter_timezone
+  permission_handler_windows
   url_launcher_windows
 )
 
