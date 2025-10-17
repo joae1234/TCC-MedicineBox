@@ -122,7 +122,7 @@ class InvitationService {
     final profRes = await _db
         .from('profiles')
         .select('id, full_name, email')
-        .in_('id', patientIds);
+        .inFilter('id', patientIds);
 
     final profRows = profRes as List;
     final Map<String, Map<String, dynamic>> patientsById = {

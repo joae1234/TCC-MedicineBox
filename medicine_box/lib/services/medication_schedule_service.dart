@@ -383,7 +383,7 @@ extension MedicationScheduleServiceHistory on MedicationScheduleService {
       );
       final histRes = await _db
           .from('medication_history')
-          .select<List<Map<String, dynamic>>>('*')
+          .select('*')
           .eq('user_id', userId)
           .order('scheduled_at', ascending: false);
 
@@ -461,8 +461,8 @@ extension MedicationScheduleServiceHistory on MedicationScheduleService {
       if (medIds.isNotEmpty) {
         final medsRes = await _db
             .from('medications')
-            .select<List<Map<String, dynamic>>>('id, name')
-            .in_('id', medIds);
+            .select('id, name')
+            .inFilter('id', medIds);
 
         for (final r in medsRes) {
           final map = Map<String, dynamic>.from(r);
