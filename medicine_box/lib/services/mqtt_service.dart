@@ -10,6 +10,7 @@ class MqttService {
   late MqttServerClient client;
   bool isConnected = false;
   // execução no localhost (dev environment) no emulador Android
+  // final String brokerUrl = '172.20.10.8';
   final String brokerUrl = '192.168.0.26';
   final int brokerPort = 1883;
   // final String brokerUrl = 'wss://<PROD_BROKER_URL>'; -> VALORES PARA PROD

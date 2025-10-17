@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 class FileLogOutput extends LogOutput {
   late File _file;
 
+  @override
   Future<void> init() async {
     final dir = await getApplicationDocumentsDirectory();
     _file = File('${dir.path}/app_logs.txt');

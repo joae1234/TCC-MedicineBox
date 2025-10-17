@@ -1,3 +1,5 @@
+import 'package:medicine_box/models/enum/mqtt_alarm_status_enum.dart';
+
 class MedicationHistory {
   final String id;
   final String userId;
@@ -14,11 +16,11 @@ class MedicationHistory {
     required this.userId,
     required this.medicationId,
     required this.lastStatusUpdate,
+    required this.status,
     required this.scheduledAt,
     required this.createdAt,
     required this.dosage,
     required this.timezone,
-    this.status = 'Scheduled',
   });
 
   static DateTime _toDate(dynamic v) =>
