@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medicine_box/pages/last_login_store.dart';
 import '../services/auth_service.dart';
 import 'medication_list_page.dart';
 import 'sign_up_page.dart';
@@ -17,6 +18,15 @@ class _SignInPageState extends State<SignInPage> {
   bool _loading = false;
 
   @override
+  void initState() {
+    super.initState();
+    () async {
+      final saved = await LastLoginStore.getEmail();
+      if (saved != null && mounted) _email.text = saved;
+    }();
+  }
+
+  @override
   void dispose() {
     _email.dispose();
     _pass.dispose();
@@ -30,6 +40,7 @@ class _SignInPageState extends State<SignInPage> {
 
       // pega o perfil do usuário logado
       final profile = await ProfileService().getOwnProfile();
+      await LastLoginStore.saveEmail(_email.text.trim());
 
       if (!mounted) return;
 
@@ -46,8 +57,9 @@ class _SignInPageState extends State<SignInPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Erro ao logar: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao logar: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -65,8 +77,10 @@ class _SignInPageState extends State<SignInPage> {
               children: [
                 const Icon(Icons.medical_services, size: 80),
                 const SizedBox(height: 16),
-                const Text('Bem-vindo de volta!',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Bem-vindo de volta!',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 24),
                 TextField(
                   controller: _email,
@@ -89,9 +103,10 @@ class _SignInPageState extends State<SignInPage> {
                 ),
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  icon: _loading
-                      ? const CircularProgressIndicator(color: Colors.white)
-                      : const Icon(Icons.login),
+                  icon:
+                      _loading
+                          ? const CircularProgressIndicator(color: Colors.white)
+                          : const Icon(Icons.login),
                   label: const Text('Entrar'),
                   onPressed: _loading ? null : _doLogin,
                   style: ElevatedButton.styleFrom(
@@ -99,10 +114,11 @@ class _SignInPageState extends State<SignInPage> {
                   ),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SignUpPage()),
-                  ),
+                  onPressed:
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SignUpPage()),
+                      ),
                   child: const Text("Ainda não tem conta? Cadastre-se"),
                 ),
               ],
