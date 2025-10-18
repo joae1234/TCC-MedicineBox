@@ -189,7 +189,7 @@ class MedicationScheduleService {
 
       log.d("[MSS] - Response do getUserNextMedication: $response");
 
-      if (response == null) {
+      if (response.isEmpty) {
         stopWatch.stop();
         log.w(
           "[MSS] - Nenhum agendamento foi encontrado para o user ${user.id}",
@@ -383,7 +383,7 @@ extension MedicationScheduleServiceHistory on MedicationScheduleService {
       );
       final histRes = await _db
           .from('medication_history')
-          .select<List<Map<String, dynamic>>>('*')
+          .select('*')
           .eq('user_id', userId)
           .order('scheduled_at', ascending: false);
 
@@ -400,7 +400,6 @@ extension MedicationScheduleServiceHistory on MedicationScheduleService {
           continue; // pula linha inválida
         }
 
-        // Converte datas se vierem como string
         if (m['scheduled_at'] is String) {
           m['scheduled_at'] = DateTime.parse(m['scheduled_at'] as String);
         }
@@ -410,13 +409,10 @@ extension MedicationScheduleServiceHistory on MedicationScheduleService {
           );
         }
 
-        // Status default
         m['status'] = (m['status'] as String?) ?? 'Scheduled';
 
-        // medication_id pode ser nulo — mantenha vazio
         m['medication_id'] = (m['medication_id'] as String?) ?? '';
 
-        // === FLEX: detecta nome real do campo de atraso e normaliza para delay_secs ===
         final dynamic delayDyn =
             m.containsKey('delay_secs')
                 ? m['delay_secs']
@@ -461,8 +457,8 @@ extension MedicationScheduleServiceHistory on MedicationScheduleService {
       if (medIds.isNotEmpty) {
         final medsRes = await _db
             .from('medications')
-            .select<List<Map<String, dynamic>>>('id, name')
-            .in_('id', medIds);
+            .select('id, name')
+            .inFilter('id', medIds);
 
         for (final r in medsRes) {
           final map = Map<String, dynamic>.from(r);

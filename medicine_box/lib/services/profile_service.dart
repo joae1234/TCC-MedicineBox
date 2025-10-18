@@ -15,11 +15,7 @@ class ProfileService {
 
       log.i('[PS] - Buscando perfil do usuário logado: $user');
       final data =
-          await _db
-              .from('profiles')
-              .select<Map<String, dynamic>>()
-              .eq('id', user)
-              .single();
+          await _db.from('profiles').select('*').eq('id', user).single();
 
       stopWatch.stop();
       log.i(
@@ -43,7 +39,7 @@ class ProfileService {
       final data =
           await _db
               .from('profiles')
-              .select<Map<String, dynamic>>()
+              .select('*')
               .eq('id', id)
               .eq('role', 'caregiver')
               .single();

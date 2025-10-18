@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medicine_box/pages/last_login_store.dart';
 
 import '../models/profile_model.dart';
 import '../services/profile_service.dart';
@@ -68,13 +69,15 @@ class _CaregiverDashboardPageState extends State<CaregiverDashboardPage> {
       await _loadAll();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(accepted ? 'Convite aceito.' : 'Convite recusado.')),
+        SnackBar(
+          content: Text(accepted ? 'Convite aceito.' : 'Convite recusado.'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Falha ao responder convite: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Falha ao responder convite: $e')));
     } finally {
       if (mounted) setState(() => _responding = false);
     }
@@ -92,6 +95,7 @@ class _CaregiverDashboardPageState extends State<CaregiverDashboardPage> {
       case _CaregiverMenu.logout:
         try {
           await AuthService().signOut();
+          await LastLoginStore.clear();
         } catch (_) {}
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
@@ -110,131 +114,150 @@ class _CaregiverDashboardPageState extends State<CaregiverDashboardPage> {
         actions: [
           PopupMenuButton<_CaregiverMenu>(
             onSelected: _handleMenu,
-            itemBuilder: (ctx) => const [
-              PopupMenuItem(
-                value: _CaregiverMenu.profile,
-                child: ListTile(
-                  leading: Icon(Icons.person),
-                  title: Text('Perfil'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: _CaregiverMenu.logout,
-                child: ListTile(
-                  leading: Icon(Icons.logout),
-                  title: Text('Sair'),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
+            itemBuilder:
+                (ctx) => const [
+                  PopupMenuItem(
+                    value: _CaregiverMenu.profile,
+                    child: ListTile(
+                      leading: Icon(Icons.person),
+                      title: Text('Perfil'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: _CaregiverMenu.logout,
+                    child: ListTile(
+                      leading: Icon(Icons.logout),
+                      title: Text('Sair'),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
+                ],
           ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
               ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: _loadAll,
-                          child: const Text('Tentar novamente'),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _loadAll,
-                  child: ListView(
-                    padding: const EdgeInsets.all(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_pendingInvites.isNotEmpty) ...[
-                        const Text(
-                          'Convites Pendentes',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ..._pendingInvites.map((inv) {
-                          return Card(
-                            child: ListTile(
-                              leading: const Icon(Icons.mark_email_unread),
-                              title: Text(inv.patientName ?? inv.patientEmail ?? 'Paciente'),
-                              subtitle: Text('Status: ${inv.status}'),
-                              trailing: Wrap(
-                                spacing: 8,
-                                children: [
-                                  TextButton(
-                                    onPressed: _responding
-                                        ? null
-                                        : () => _respondInvite(inv.invitationId, false),
-                                    child: const Text('Recusar'),
-                                  ),
-                                  ElevatedButton(
-                                    onPressed: _responding
-                                        ? null
-                                        : () => _respondInvite(inv.invitationId, true),
-                                    child: const Text('Aceitar'),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                        const SizedBox(height: 16),
-                      ],
-
+                      Text(_error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadAll,
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              : RefreshIndicator(
+                onRefresh: _loadAll,
+                child: ListView(
+                  padding: const EdgeInsets.all(12),
+                  children: [
+                    if (_pendingInvites.isNotEmpty) ...[
                       const Text(
-                        'Meus Pacientes',
+                        'Convites Pendentes',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
                       ),
                       const SizedBox(height: 8),
-
-                      if (_patients.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(child: Text('Você ainda não cuida de nenhum paciente.')),
-                        )
-                      else
-                        ..._patients.map((p) {
-                          return Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                      ..._pendingInvites.map((inv) {
+                        return Card(
+                          child: ListTile(
+                            leading: const Icon(Icons.mark_email_unread),
+                            title: Text(
+                              inv.patientName ?? inv.patientEmail ?? 'Paciente',
                             ),
-                            child: ListTile(
-                              leading: const CircleAvatar(child: Icon(Icons.person)),
-                              title: Text(p.fullName),
-                              subtitle: Text(p.email),
-                              trailing: const Icon(Icons.history),
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PatientHistoryLoaderPage(
-                                      userId: p.id,
-                                      patientName: p.fullName,
-                                    ),
-                                  ),
-                                );
-                              },
+                            subtitle: Text('Status: ${inv.status}'),
+                            trailing: Wrap(
+                              spacing: 8,
+                              children: [
+                                TextButton(
+                                  onPressed:
+                                      _responding
+                                          ? null
+                                          : () => _respondInvite(
+                                            inv.invitationId,
+                                            false,
+                                          ),
+                                  child: const Text('Recusar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed:
+                                      _responding
+                                          ? null
+                                          : () => _respondInvite(
+                                            inv.invitationId,
+                                            true,
+                                          ),
+                                  child: const Text('Aceitar'),
+                                ),
+                              ],
                             ),
-                          );
-                        }).toList(),
+                          ),
+                        );
+                      }).toList(),
+                      const SizedBox(height: 16),
                     ],
-                  ),
+
+                    const Text(
+                      'Meus Pacientes',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    if (_patients.isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(
+                          child: Text(
+                            'Você ainda não cuida de nenhum paciente.',
+                          ),
+                        ),
+                      )
+                    else
+                      ..._patients.map((p) {
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.person),
+                            ),
+                            title: Text(p.fullName),
+                            subtitle: Text(p.email),
+                            trailing: const Icon(Icons.history),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (_) => PatientHistoryLoaderPage(
+                                        userId: p.id,
+                                        patientName: p.fullName,
+                                      ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      }).toList(),
+                  ],
                 ),
+              ),
     );
   }
 }

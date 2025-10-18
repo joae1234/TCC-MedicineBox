@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medicine_box/pages/auth_gate.dart';
 import 'package:medicine_box/services/log_service.dart';
 import 'package:medicine_box/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -54,7 +55,7 @@ class MyApp extends StatelessWidget {
           fillColor: Colors.grey[100],
         ),
       ),
-      home: const WelcomePage(),
+      home: const AuthGate(),
       debugShowCheckedModeBanner: false,
     );
   }

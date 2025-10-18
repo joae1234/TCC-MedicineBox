@@ -24,11 +24,11 @@ class MedicationService {
       final response = await _db
           .from('medications')
           .select()
-          .is_('deleted_at', null)
-          .in_('id', id);
+          .isFilter('deleted_at', null)
+          .inFilter('id', id);
 
       // _log.d('[MS] - Resultado da busca por medicações: $response');
-      if (response == null) {
+      if (response.isEmpty) {
         _log.w(
           "[MS] - Nenhuma medicação foi encontrada para os IDs fornecidos",
         );
@@ -74,9 +74,9 @@ class MedicationService {
       _log.i('[MS] - Buscando todas as medicações para o usuário: ${user.id}');
       final rows = await _db
           .from('medications')
-          .select<List<Map<String, dynamic>>>()
+          .select('*')
           .eq('user_id', user.id)
-          .is_('deleted_at', null)
+          .isFilter('deleted_at', null)
           .order('created_at');
 
       _log.d('[MS] - Medicações retornadas para o usuário ${user.id}: $rows');
@@ -112,9 +112,9 @@ class MedicationService {
 
       final rows = await _db
           .from('medications')
-          .select<List<Map<String, dynamic>>>()
+          .select('*')
           .eq('user_id', user.id)
-          .is_('deleted_at', null)
+          .isFilter('deleted_at', null)
           .lte('start_date', now.toIso8601String())
           .or('end_date.gte.${now.toIso8601String()},end_date.is.null')
           .order('created_at');
@@ -187,7 +187,7 @@ class MedicationService {
           await _db
               .from('medications')
               .update(payload)
-              .eq('id', med.id)
+              .eq('id', med.id!)
               .select()
               .single();
 
