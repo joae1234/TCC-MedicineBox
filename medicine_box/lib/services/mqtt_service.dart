@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:medicine_box/models/enum/mqtt_topics_enum.dart';
 import 'package:medicine_box/models/mqtt_action_message.dart';
 import 'package:medicine_box/services/log_service.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
-// import 'package:flutter/services.dart' show rootBundle;
 
 class MqttService {
   late MqttServerClient client;
@@ -28,7 +26,6 @@ class MqttService {
 
   Future<bool> connect() async {
     final clientId = 'flutter_${DateTime.now().millisecondsSinceEpoch}';
-    // final securityContext = await loadSecurityContext();
 
     client =
         MqttServerClient.withPort(brokerUrl, clientId, brokerPort)
@@ -145,16 +142,4 @@ class MqttService {
       client.disconnect();
     }
   }
-
-  // Future<SecurityContext> loadSecurityContext() async {
-  //   final ctx = SecurityContext();
-  //   try {
-  //     final data = await rootBundle.load('assets/certs/isrgrootx1.pem');
-  //     ctx.setTrustedCertificatesBytes(data.buffer.asUint8List());
-  //     _log.i('[MQTT] - Certificado SSL carregado com sucesso');
-  //   } catch (e) {
-  //     _log.e('[MQTT] - Erro ao carregar certificado SSL', error: e);
-  //   }
-  //   return ctx;
-  // }
 }
