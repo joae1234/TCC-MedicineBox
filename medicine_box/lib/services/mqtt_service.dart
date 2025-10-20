@@ -1,20 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:medicine_box/models/enum/mqtt_topics_enum.dart';
 import 'package:medicine_box/models/mqtt_action_message.dart';
 import 'package:medicine_box/services/log_service.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
+// import 'package:flutter/services.dart' show rootBundle;
 
 class MqttService {
   late MqttServerClient client;
   bool isConnected = false;
-  // execução no localhost (dev environment) no emulador Android
-  // final String brokerUrl = '172.20.10.8';
-  final String brokerUrl = '192.168.0.26';
-  final int brokerPort = 1883;
-  // final String brokerUrl = 'wss://<PROD_BROKER_URL>'; -> VALORES PARA PROD
-  // final int brokerPort = <PROD_BROKER_PORT>; -> VALORES PARA PROD
+  final String brokerUrl =
+      'f31b169dbfdd458394f5c3d1a3084054.s1.eu.hivemq.cloud';
+  final int brokerPort = 8883;
+  final String brokerUsername = 'medicine_box_credentials';
+  final String brokerPassword = 'medicine_box_MQTT2025';
   final String topicAlarmCommand = MqttTopicsEnum.alarmCommmand.name;
   final String topicAlarmStatus = MqttTopicsEnum.alarmStatus.name;
   final _log = LogService().logger;
@@ -26,27 +27,34 @@ class MqttService {
       .where((msg) => msg.metadata['mqtt_topic'] == topicAlarmStatus);
 
   Future<bool> connect() async {
+    final clientId = 'flutter_${DateTime.now().millisecondsSinceEpoch}';
+    // final securityContext = await loadSecurityContext();
+
     client =
-        MqttServerClient(
-            brokerUrl,
-            'flutter_${DateTime.now().millisecondsSinceEpoch}',
-          )
-          ..port = brokerPort
+        MqttServerClient.withPort(brokerUrl, clientId, brokerPort)
+          ..secure = true
           ..keepAlivePeriod = 30
+          ..logging(on: true)
           ..onConnected = _onConnected
           ..onDisconnected = _onDisconnected
-          ..secure =
-              false // no TLS
-          ..logging(on: false);
+          ..setProtocolV311();
+
+    client.connectionMessage = MqttConnectMessage()
+        .withClientIdentifier(clientId)
+        .startClean()
+        .withProtocolVersion(4);
 
     _log.i('[MQTT] - Iniciando conexão com o broker MQTT');
     try {
-      await client.connect();
+      await client.connect(brokerUsername, brokerPassword);
+      _log.d(
+        '[MQTT] - Resultado da conexão MQTT: ${client.connectionStatus} - ${client.connectionStatus?.state}',
+      );
       isConnected = true;
       client.updates?.listen(_onMessage);
     } catch (e) {
       _log.w('[MQTT] - Falha na conexão com o broker');
-      // _log.d('[MQTT] - Falha na conexão: $e');
+      _log.d('[MQTT] - Falha na conexão: $e');
       isConnected = false;
       return isConnected;
     }
@@ -137,4 +145,16 @@ class MqttService {
       client.disconnect();
     }
   }
+
+  // Future<SecurityContext> loadSecurityContext() async {
+  //   final ctx = SecurityContext();
+  //   try {
+  //     final data = await rootBundle.load('assets/certs/isrgrootx1.pem');
+  //     ctx.setTrustedCertificatesBytes(data.buffer.asUint8List());
+  //     _log.i('[MQTT] - Certificado SSL carregado com sucesso');
+  //   } catch (e) {
+  //     _log.e('[MQTT] - Erro ao carregar certificado SSL', error: e);
+  //   }
+  //   return ctx;
+  // }
 }
