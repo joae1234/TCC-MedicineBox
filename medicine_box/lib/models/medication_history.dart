@@ -1,5 +1,3 @@
-import 'package:medicine_box/models/enum/mqtt_alarm_status_enum.dart';
-
 class MedicationHistory {
   final String id;
   final String userId;

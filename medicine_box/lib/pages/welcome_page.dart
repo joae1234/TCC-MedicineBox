@@ -7,17 +7,21 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.teal[50],
+      backgroundColor: const Color.fromARGB(255, 233, 224, 207),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.medication_liquid, size: 100, color: Colors.teal),
+              Image.asset(
+                'assets/medicine_box_logo.png',
+                width: 300,
+                height: 300,
+              ),
               const SizedBox(height: 30),
               const Text(
-                'Medication Reminder',
+                'LembreApp',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
               ),
@@ -30,9 +34,17 @@ class WelcomePage extends StatelessWidget {
               const SizedBox(height: 40),
               ElevatedButton.icon(
                 icon: const Icon(Icons.arrow_forward),
-                label: const Text("Começar"),
+                label: const Text(
+                  "Começar",
+                  style: TextStyle(fontSize: 18, color: Colors.white),
+                ),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  iconColor: Colors.white,
+                  backgroundColor: const Color(0xFFFFA60E),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 14,
+                  ),
                   textStyle: const TextStyle(fontSize: 18),
                 ),
                 onPressed: () {

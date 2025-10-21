@@ -44,7 +44,19 @@ class _InviteCaregiverPageState extends State<InviteCaregiverPage> {
   @override
   Widget build(BuildContext ctx) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Adicionar cuidador responsável')),
+      backgroundColor: const Color.fromARGB(255, 233, 224, 207),
+      appBar: AppBar(
+        title: const Text(
+          'Adicionar cuidador responsável',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          maxLines: 2,
+          softWrap: true,
+          overflow: TextOverflow.ellipsis,
+        ),
+        backgroundColor: const Color(0xFFFFA60E),
+        foregroundColor: Colors.white,
+        toolbarHeight: 100,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -58,10 +70,18 @@ class _InviteCaregiverPageState extends State<InviteCaregiverPage> {
             ),
             const SizedBox(height: 20),
             _loading
-                ? const CircularProgressIndicator()
+                ? const CircularProgressIndicator(color: Color(0xFFFFA60E))
                 : ElevatedButton(
                   onPressed: _sendInvite,
-                  child: const Text('Enviar Convite'),
+                  child: const Text(
+                    'Enviar Convite',
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFA60E),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
                 ),
           ],
         ),
