@@ -229,7 +229,16 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(title: const Text('Nova Medicação')),
+          backgroundColor: const Color.fromARGB(255, 233, 224, 207),
+          appBar: AppBar(
+            toolbarHeight: 50,
+            title: const Text(
+              'Nova Medicação',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            backgroundColor: const Color(0xFFFFA60E),
+            foregroundColor: Colors.white,
+          ),
           body: Padding(
             padding: const EdgeInsets.all(16),
             child: ListView(
@@ -296,8 +305,15 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                 ),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.access_time),
-                  label: const Text('Adicionar horário'),
+                  label: const Text(
+                    'Adicionar horário',
+                    style: TextStyle(fontSize: 18),
+                  ),
                   onPressed: _addTime,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFA60E),
+                    foregroundColor: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ListTile(
@@ -339,7 +355,12 @@ class _MedicationFormPageState extends State<MedicationFormPage> {
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
                   icon: const Icon(Icons.save),
-                  label: const Text('Salvar'),
+                  label: const Text('Salvar', style: TextStyle(fontSize: 18)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFA60E),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
                   onPressed: _submit,
                 ),
               ],

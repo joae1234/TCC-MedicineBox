@@ -68,6 +68,7 @@ class _SignInPageState extends State<SignInPage> {
   @override
   Widget build(BuildContext ctx) {
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 233, 224, 207),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -75,11 +76,19 @@ class _SignInPageState extends State<SignInPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.medical_services, size: 80),
+                const Icon(
+                  Icons.medical_services,
+                  size: 120,
+                  color: Color(0xFFFFA60E),
+                ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Bem-vindo de volta!',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  'Bem-vindo!',
+                  style: TextStyle(
+                    fontSize: 35,
+                    color: Colors.black,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 TextField(
@@ -105,11 +114,18 @@ class _SignInPageState extends State<SignInPage> {
                 ElevatedButton.icon(
                   icon:
                       _loading
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const CircularProgressIndicator(
+                            color: Color(0xFFFFA60E),
+                          )
                           : const Icon(Icons.login),
-                  label: const Text('Entrar'),
+                  label: const Text(
+                    'Entrar',
+                    style: TextStyle(fontSize: 18, color: Colors.white),
+                  ),
                   onPressed: _loading ? null : _doLogin,
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFFA60E),
+                    iconColor: Colors.white,
                     minimumSize: const Size(double.infinity, 50),
                   ),
                 ),
@@ -119,7 +135,10 @@ class _SignInPageState extends State<SignInPage> {
                         context,
                         MaterialPageRoute(builder: (_) => const SignUpPage()),
                       ),
-                  child: const Text("Ainda não tem conta? Cadastre-se"),
+                  child: const Text(
+                    "Ainda não tem conta? Cadastre-se",
+                    style: TextStyle(fontSize: 15, color: Colors.black),
+                  ),
                 ),
               ],
             ),

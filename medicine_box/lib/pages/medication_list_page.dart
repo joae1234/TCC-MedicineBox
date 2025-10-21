@@ -395,6 +395,7 @@ class _MedicationListPageState extends State<MedicationListPage> {
     final alarm = _nextMedAlarm;
 
     return Card(
+      color: Colors.white,
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -610,13 +611,16 @@ class _MedicationListPageState extends State<MedicationListPage> {
     }
 
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 233, 224, 207),
       appBar: AppBar(
+        toolbarHeight: 50,
         title: const Text(
           'Minhas Medicações',
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
         ),
         centerTitle: true,
-        backgroundColor: Colors.blue,
+        backgroundColor: const Color(0xFFFFA60E),
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           PopupMenuButton<_MenuAction>(

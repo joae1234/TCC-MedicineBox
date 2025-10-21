@@ -5,7 +5,6 @@ import 'package:medicine_box/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
-import 'pages/welcome_page.dart';
 import 'package:flutter_timezone/flutter_timezone.dart' as ftz;
 
 Future<void> main() async {
@@ -37,7 +36,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Medication Reminder',
+      title: 'Lembre',
       theme: ThemeData(
         primarySwatch: Colors.teal,
         fontFamily: 'Roboto',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:medicine_box/models/mapping/role_mapping.dart';
 import '../services/auth_service.dart';
 import '../services/profile_service.dart';
 import '../models/profile_model.dart';
@@ -57,20 +58,24 @@ class _SignUpPageState extends State<SignUpPage> {
         confirm.isEmpty ||
         role.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha todos os campos e selecione um perfil.')),
+        const SnackBar(
+          content: Text('Preencha todos os campos e selecione um perfil.'),
+        ),
       );
       return;
     }
     if (pass.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A senha deve ter pelo menos 6 caracteres.')),
+        const SnackBar(
+          content: Text('A senha deve ter pelo menos 6 caracteres.'),
+        ),
       );
       return;
     }
     if (pass != confirm) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Senhas não conferem.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Senhas não conferem.')));
       return;
     }
 
@@ -127,9 +132,9 @@ class _SignUpPageState extends State<SignUpPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao cadastrar: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao cadastrar: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -138,7 +143,20 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext ctx) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cadastre-se')),
+      backgroundColor: const Color.fromARGB(255, 233, 224, 207),
+      appBar: AppBar(
+        foregroundColor: Colors.white,
+        toolbarHeight: 50,
+        title: const Text(
+          'Cadastre-se',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: const Color(0xFFFFA60E),
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -196,22 +214,24 @@ class _SignUpPageState extends State<SignUpPage> {
                     'Selecione um perfil',
                     style: TextStyle(fontSize: 14),
                   ),
-                  items: _rolesList.map((role) {
-                    return DropdownMenuItem<String>(
-                      value: role,
-                      child: Text(
-                        role[0].toUpperCase() + role.substring(1),
-                        style: const TextStyle(fontSize: 14),
-                      ),
-                    );
-                  }).toList(),
+                  items:
+                      _rolesList.map((role) {
+                        var roleMapped = roleMapping[role] ?? role;
+
+                        return DropdownMenuItem<String>(
+                          value: roleMapped,
+                          child: Text(
+                            roleMapped[0].toUpperCase() +
+                                roleMapped.substring(1),
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
                   value: _roleCtrl.isEmpty ? null : _roleCtrl,
                   onChanged: (value) {
                     setState(() => _roleCtrl = value ?? '');
                   },
-                  dropdownStyleData: DropdownStyleData(
-                    maxHeight: 200,
-                  ),
+                  dropdownStyleData: DropdownStyleData(maxHeight: 200),
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -223,8 +243,11 @@ class _SignUpPageState extends State<SignUpPage> {
                     prefixIcon: const Icon(Icons.lock),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscurePass ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _obscurePass = !_obscurePass),
+                      icon: Icon(
+                        _obscurePass ? Icons.visibility : Icons.visibility_off,
+                      ),
+                      onPressed:
+                          () => setState(() => _obscurePass = !_obscurePass),
                     ),
                   ),
                 ),
@@ -237,22 +260,34 @@ class _SignUpPageState extends State<SignUpPage> {
                     prefixIcon: const Icon(Icons.lock_outline),
                     border: const OutlineInputBorder(),
                     suffixIcon: IconButton(
-                      icon: Icon(_obscureConfirm ? Icons.visibility : Icons.visibility_off),
-                      onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
+                      icon: Icon(
+                        _obscureConfirm
+                            ? Icons.visibility
+                            : Icons.visibility_off,
+                      ),
+                      onPressed:
+                          () => setState(
+                            () => _obscureConfirm = !_obscureConfirm,
+                          ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 24),
                 _loading
-                    ? const CircularProgressIndicator()
+                    ? const CircularProgressIndicator(color: Color(0xFFFFA60E))
                     : ElevatedButton.icon(
-                        icon: const Icon(Icons.check),
-                        label: const Text('Cadastrar'),
-                        onPressed: _doSignUp,
-                        style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 50),
-                        ),
+                      icon: const Icon(Icons.check),
+                      label: const Text(
+                        'Cadastrar',
+                        style: TextStyle(color: Colors.white, fontSize: 18),
                       ),
+                      onPressed: _doSignUp,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFFA60E),
+                        iconColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 50),
+                      ),
+                    ),
               ],
             ),
           ),
