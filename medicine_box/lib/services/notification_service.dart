@@ -29,11 +29,10 @@ class NotificationService {
 
     await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
-    final androidImplementation =
-        flutterLocalNotificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >();
+    final androidImplementation = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
 
     final AndroidNotificationChannel channel = AndroidNotificationChannel(
       _channelId,
@@ -53,41 +52,40 @@ class NotificationService {
 
     await requestExactAlarmPermission();
 
-    await NotificationService
-        .notificationService
-        .flutterLocalNotificationsPlugin
-        .show(
-          999,
-          'Permissões de lembrete liberadas!',
-          'Canal de comunicação e permissão ok',
-          NotificationDetails(
-            android: AndroidNotificationDetails(
-              _channelId,
-              _channelName,
-              channelDescription: _channelDescription,
-              importance: Importance.max,
-              priority: Priority.high,
-              playSound: true,
-              enableVibration: true,
-              category: AndroidNotificationCategory.alarm,
-            ),
-          ),
-        );
+    // await NotificationService
+    //     .notificationService
+    //     .flutterLocalNotificationsPlugin
+    //     .show(
+    //       999,
+    //       'Permissões de lembrete liberadas!',
+    //       'Canal de comunicação e permissão ok',
+    //       NotificationDetails(
+    //         android: AndroidNotificationDetails(
+    //           _channelId,
+    //           _channelName,
+    //           channelDescription: _channelDescription,
+    //           importance: Importance.max,
+    //           priority: Priority.high,
+    //           playSound: true,
+    //           enableVibration: true,
+    //           category: AndroidNotificationCategory.alarm,
+    //         ),
+    //       ),
+    //     );
   }
 
   Future<void> requestExactAlarmPermission() async {
     if (Platform.isAndroid) {
       try {
-        final androidPlugin =
-            NotificationService
-                .notificationService
-                .flutterLocalNotificationsPlugin
-                .resolvePlatformSpecificImplementation<
-                  AndroidFlutterLocalNotificationsPlugin
-                >();
+        final androidPlugin = NotificationService
+            .notificationService
+            .flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
 
-        final bool? granted =
-            await androidPlugin?.requestExactAlarmsPermission();
+        final bool? granted = await androidPlugin
+            ?.requestExactAlarmsPermission();
 
         if (granted != null && granted) {
           log.i('[EXACT ALARM] Permissão concedida ✅');
